@@ -1,0 +1,15 @@
+#!/bin/bash
+
+set -e
+
+PORT="/dev/ttyACM0"
+TARGET="esp32s3"
+
+echo "Setting target..."
+idf.py set-target ${TARGET}
+
+echo "Building..."
+idf.py build
+
+echo "Flashing and opening monitor..."
+idf.py -p ${PORT} flash monitor

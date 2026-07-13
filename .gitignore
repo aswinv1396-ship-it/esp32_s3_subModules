@@ -1,0 +1,22 @@
+# Build output
+build/
+
+# SDK configuration backups
+sdkconfig.old
+sdkconfig.ci
+
+# Generated dependency files
+dependencies.lock
+
+# VS Code
+.vscode/
+
+# CLion
+.idea/
+
+# macOS
+.DS_Store
+
+# Python cache
+__pycache__/
+*.pyc
