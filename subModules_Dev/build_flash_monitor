@@ -8,6 +8,9 @@ TARGET="esp32s3"
 echo "Setting target..."
 idf.py set-target ${TARGET}
 
+echo "full clean in progress.."
+idf.py fullclean
+
 echo "Building..."
 idf.py build
 
