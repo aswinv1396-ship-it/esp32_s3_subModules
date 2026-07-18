@@ -20,6 +20,20 @@ typedef struct
 
 } wifi_ap_info_t;
 
+typedef struct
+{
+    char ssid[33];
+    char password[64];
+    bool valid;
+} saved_wifi_t;
+
+static saved_wifi_t saved_wifi =
+{
+    .ssid = "test",
+    .password = "1234567v",
+    .valid = true
+};
+
 /**
  * @brief Initialize the WiFi manager.
  *

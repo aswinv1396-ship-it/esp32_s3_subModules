@@ -11,4 +11,6 @@ idf_component_register(
         mic
         wifi
         console
+        webSocket
+        time
 )

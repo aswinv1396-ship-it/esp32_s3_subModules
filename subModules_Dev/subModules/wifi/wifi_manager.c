@@ -209,6 +209,8 @@ int wifi_manager_scan(wifi_ap_info_t *aps,int max_count)
     return number;
 }
 
+
+
 /*
  * Connect to WiFi
  */
