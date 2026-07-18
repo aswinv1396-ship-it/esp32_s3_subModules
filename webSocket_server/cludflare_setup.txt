@@ -1,0 +1,126 @@
+aswin@embedded631:~/websocket_test$ sudo mkdir -p --mode=0755 /usr/share/keyrings
+[sudo] password for aswin: 
+aswin@embedded631:~/websocket_test$ curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg | \
+sudo tee /usr/share/keyrings/cloudflare-main.gpg >/dev/null
+aswin@embedded631:~/websocket_test$ echo "deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared any main" | \
+sudo tee /etc/apt/sources.list.d/cloudflared.list
+deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared any main
+aswin@embedded631:~/websocket_test$ sudo apt-get update
+sudo apt-get install cloudflared
+Get:1 file:/var/l4t-cuda-repo-cross-aarch64-ubuntu2204-12-6-local  InRelease [1,572 B]
+Get:2 file:/var/l4t-cuda-repo-ubuntu2204-12-6-local  InRelease [1,572 B]
+Get:1 file:/var/l4t-cuda-repo-cross-aarch64-ubuntu2204-12-6-local  InRelease [1,572 B]                 
+Get:2 file:/var/l4t-cuda-repo-ubuntu2204-12-6-local  InRelease [1,572 B]                               
+Hit:3 http://in.archive.ubuntu.com/ubuntu jammy InRelease                                              
+Get:4 https://pkg.cloudflare.com/cloudflared any InRelease [5,039 B]                                   
+Hit:5 http://security.ubuntu.com/ubuntu jammy-security InRelease                                       
+Hit:6 http://in.archive.ubuntu.com/ubuntu jammy-updates InRelease                                      
+Get:7 https://pkg.cloudflare.com/cloudflared any/main amd64 Packages [377 B]                           
+Hit:8 https://ppa.launchpadcontent.net/boltgolt/howdy/ubuntu jammy InRelease                           
+Hit:9 https://ngrok-agent.s3.amazonaws.com bookworm InRelease                       
+Fetched 5,416 B in 1s (4,595 B/s)
+Reading package lists... Done
+N: Skipping acquire of configured file 'main/binary-i386/Packages' as repository 'https://pkg.cloudflare.com/cloudflared any InRelease' doesn't support architecture 'i386'
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+The following packages were automatically installed and are no longer required:
+  gdal-data ibverbs-providers libaec0 libarmadillo10 libarpack2 libavcodec-dev libavformat-dev
+  libavutil-dev libblosc1 libcfitsio9 libcharls2 libdc1394-dev libdeflate-dev libevent-pthreads-2.1-7
+  libexif-dev libexif-doc libfabric1 libfreexl1 libfwupd2 libfwupdplugin5 libfyba0 libgcab-1.0-0
+  libgdal30 libgdcm-dev libgdcm3.0 libgeos-c1v5 libgeos3.10.2 libgeotiff5 libgl2ps1.4 libgphoto2-dev
+  libhdf4-0-alt libhdf5-103-1 libhdf5-hl-100 libhwloc-plugins libhwloc15 libibverbs1 libilmbase-dev
+  libjbig-dev libjpeg-dev libjpeg-turbo8-dev libjpeg8-dev libkmlbase1 libkmldom1 libkmlengine1
+  liblept5 liblzma-dev libminizip1 libmysqlclient21 libnetcdf19 libodbc2 libodbcinst2 libogdi4.1
+  libopencv-calib3d-dev libopencv-calib3d4.5d libopencv-contrib-dev libopencv-contrib4.5d
+  libopencv-core-dev libopencv-core4.5d libopencv-dev libopencv-dnn-dev libopencv-dnn4.5d
+  libopencv-features2d-dev libopencv-features2d4.5d libopencv-flann-dev libopencv-flann4.5d
+  libopencv-highgui-dev libopencv-highgui4.5d libopencv-imgcodecs-dev libopencv-imgcodecs4.5d
+  libopencv-imgproc-dev libopencv-imgproc4.5d libopencv-ml-dev libopencv-ml4.5d
+  libopencv-objdetect-dev libopencv-objdetect4.5d libopencv-photo-dev libopencv-photo4.5d
+  libopencv-shape-dev libopencv-shape4.5d libopencv-stitching-dev libopencv-stitching4.5d
+  libopencv-superres-dev libopencv-superres4.5d libopencv-video-dev libopencv-video4.5d
+  libopencv-videoio-dev libopencv-videoio4.5d libopencv-videostab-dev libopencv-videostab4.5d
+  libopencv-viz-dev libopencv-viz4.5d libopencv4.5-java libopencv4.5d-jni libopenexr-dev libopenmpi3
+  libpam-python libpmix2 libpq5 libproj22 libpsm-infinipath1 libpsm2-2 libraw1394-dev libraw1394-tools
+  librdmacm1 librttopo1 libsmbios-c2 libsocket++1 libspatialite7 libsuperlu5 libswresample-dev
+  libswscale-dev libsz2 libtbb-dev libtbb12 libtesseract4 libtiff-dev libtiffxx5 libucx0 liburiparser1
+  libvtk9.1 libxerces-c3.2 libxnvctrl0 linux-headers-6.8.0-117-generic linux-hwe-6.8-headers-6.8.0-117
+  linux-hwe-6.8-tools-6.8.0-117 linux-image-6.8.0-117-generic linux-modules-6.8.0-117-generic
+  linux-modules-extra-6.8.0-117-generic linux-tools-6.8.0-117-generic mysql-common opencv-data
+  proj-bin proj-data streamer unixodbc-common xawtv-plugins
+Use 'sudo apt autoremove' to remove them.
+The following NEW packages will be installed:
+  cloudflared
+0 upgraded, 1 newly installed, 0 to remove and 63 not upgraded.
+Need to get 18.9 MB of archives.
+After this operation, 39.3 MB of additional disk space will be used.
+Get:1 https://pkg.cloudflare.com/cloudflared any/main amd64 cloudflared amd64 2026.7.2 [18.9 MB]
+Fetched 18.9 MB in 1s (21.0 MB/s)      
+Selecting previously unselected package cloudflared.
+(Reading database ... 371830 files and directories currently installed.)
+Preparing to unpack .../cloudflared_2026.7.2_amd64.deb ...
+Unpacking cloudflared (2026.7.2) ...
+Setting up cloudflared (2026.7.2) ...
+Processing triggers for man-db (2.10.2-1) ...
+aswin@embedded631:~/websocket_test$ cloudflared --version
+cloudflared version 2026.7.2 (built 2026-07-15-13:29 UTC)
+aswin@embedded631:~/websocket_test$ cloudflared tunnel --url http://localhost:8080
+2026-07-18T07:11:46Z INF Thank you for trying Cloudflare Tunnel. Doing so, without a Cloudflare account, is a quick way to experiment and try it out. However, be aware that these account-less Tunnels have no uptime guarantee, are subject to the Cloudflare Online Services Terms of Use (https://www.cloudflare.com/website-terms/), and Cloudflare reserves the right to investigate your use of Tunnels for violations of such terms. If you intend to use Tunnels in production you should use a pre-created named tunnel by following: https://developers.cloudflare.com/cloudflare-one/connections/connect-apps
+2026-07-18T07:11:46Z INF Requesting new quick Tunnel on trycloudflare.com...
+2026-07-18T07:11:52Z INF +--------------------------------------------------------------------------------------------+
+2026-07-18T07:11:52Z INF |  Your quick Tunnel has been created! Visit it at (it may take some time to be reachable):  |
+2026-07-18T07:11:52Z INF |  https://bring-struck-photograph-kinda.trycloudflare.com                                   |
+2026-07-18T07:11:52Z INF +--------------------------------------------------------------------------------------------+
+2026-07-18T07:11:52Z INF Cannot determine default configuration path. No file [config.yml config.yaml] in [~/.cloudflared ~/.cloudflare-warp ~/cloudflare-warp /etc/cloudflared /usr/local/etc/cloudflared]
+2026-07-18T07:11:52Z INF Version 2026.7.2 (Checksum ec905ea7b7e327ff8abdde8cb64697a2152de74dbcdbf6aec9db8364eb3886cd)
+2026-07-18T07:11:52Z INF GOOS: linux, GOVersion: go1.26.4, GoArch: amd64
+2026-07-18T07:11:52Z INF Settings: map[ha-connections:1 protocol:quic url:http://localhost:8080]
+2026-07-18T07:11:52Z INF cloudflared will not automatically update if installed by a package manager.
+2026-07-18T07:11:52Z INF Generated Connector ID: e8b09e7d-b5db-41ab-8156-3be23ca97efe
+2026-07-18T07:11:52Z INF Initial protocol quic
+2026-07-18T07:11:52Z INF ICMP proxy will use 192.168.12.230 as source for IPv4
+2026-07-18T07:11:52Z INF ICMP proxy will use ::1 in zone lo as source for IPv6
+2026/07/18 12:41:52 failed to sufficiently increase receive buffer size (was: 208 kiB, wanted: 7168 kiB, got: 416 kiB). See https://github.com/quic-go/quic-go/wiki/UDP-Buffer-Sizes for details.
+2026-07-18T07:11:52Z INF ICMP proxy will use 192.168.12.230 as source for IPv4
+2026-07-18T07:11:52Z INF ICMP proxy will use ::1 in zone lo as source for IPv6
+2026-07-18T07:11:52Z INF Starting metrics server on 127.0.0.1:20241/metrics
+2026-07-18T07:11:52Z INF Tunnel connection curve preferences: [X25519MLKEM768 CurveID(65074) CurveP256] connIndex=0 event=0 ip=198.41.200.23
+2026-07-18T07:11:52Z INF Registered tunnel connection connIndex=0 connection=abbf167a-b3d6-4fb2-8fdd-26c3091e8893 event=0 ip=198.41.200.23 location=bom10 protocol=quic
+2026-07-18T07:11:58Z INF +-------------------------------------------------------------------------------------+
+2026-07-18T07:11:58Z INF |                               CONNECTIVITY PRE-CHECKS                               |
+2026-07-18T07:11:58Z INF +-------------------------------------------------------------------------------------+
+2026-07-18T07:11:58Z INF |  COMPONENT         TARGET                     STATUS  DETAILS                       |
+2026-07-18T07:11:58Z INF |  DNS Resolution    region1.v2.argotunnel.com  PASS    DNS Resolved successfully     |
+2026-07-18T07:11:58Z INF |  DNS Resolution    region2.v2.argotunnel.com  PASS    DNS Resolved successfully     |
+2026-07-18T07:11:58Z INF |  UDP Connectivity  region1.v2.argotunnel.com  PASS    QUIC connection successful    |
+2026-07-18T07:11:58Z INF |  UDP Connectivity  region2.v2.argotunnel.com  PASS    QUIC connection successful    |
+2026-07-18T07:11:58Z INF |  TCP Connectivity  region1.v2.argotunnel.com  PASS    HTTP/2 connection successful  |
+2026-07-18T07:11:58Z INF |  TCP Connectivity  region2.v2.argotunnel.com  PASS    HTTP/2 connection successful  |
+2026-07-18T07:11:58Z INF |  Cloudflare API    api.cloudflare.com:443     PASS    API is reachable              |
+2026-07-18T07:11:58Z INF |                                                                                     |
+2026-07-18T07:11:58Z INF |  SUMMARY: Environment is healthy. cloudflared will use 'quic' as primary protocol.  |
+2026-07-18T07:11:58Z INF +-------------------------------------------------------------------------------------+
+2026-07-18T07:11:58Z INF precheck component="DNS Resolution" details="DNS Resolved successfully" run_id=bef76de7-e780-4e5d-b538-bb50f8ff0135 status=pass target=region1.v2.argotunnel.com
+2026-07-18T07:11:58Z INF precheck component="DNS Resolution" details="DNS Resolved successfully" run_id=bef76de7-e780-4e5d-b538-bb50f8ff0135 status=pass target=region2.v2.argotunnel.com
+2026-07-18T07:11:58Z INF precheck component="UDP Connectivity" details="QUIC connection successful" run_id=bef76de7-e780-4e5d-b538-bb50f8ff0135 status=pass target=region1.v2.argotunnel.com
+2026-07-18T07:11:58Z INF precheck component="UDP Connectivity" details="QUIC connection successful" run_id=bef76de7-e780-4e5d-b538-bb50f8ff0135 status=pass target=region2.v2.argotunnel.com
+2026-07-18T07:11:58Z INF precheck component="TCP Connectivity" details="HTTP/2 connection successful" run_id=bef76de7-e780-4e5d-b538-bb50f8ff0135 status=pass target=region1.v2.argotunnel.com
+2026-07-18T07:11:58Z INF precheck component="TCP Connectivity" details="HTTP/2 connection successful" run_id=bef76de7-e780-4e5d-b538-bb50f8ff0135 status=pass target=region2.v2.argotunnel.com
+2026-07-18T07:11:58Z INF precheck component="Cloudflare API" details="API is reachable" run_id=bef76de7-e780-4e5d-b538-bb50f8ff0135 status=pass target=api.cloudflare.com:443
+2026-07-18T07:11:58Z INF precheck complete hard_fail=false run_id=bef76de7-e780-4e5d-b538-bb50f8ff0135 suggested_protocol=quic
+
+
+
+^C2026-07-18T08:26:44Z INF Initiating graceful shutdown due to signal interrupt ...
+2026-07-18T08:26:45Z INF Unregistered tunnel connection connIndex=0 event=0 ip=198.41.200.23
+2026-07-18T08:26:50Z ERR failed to run the datagram handler error="Application error 0x0 (remote)" connIndex=0 event=0 ip=198.41.200.23
+2026-07-18T08:26:50Z ERR failed to serve tunnel connection error="accept stream listener encountered a failure while serving" connIndex=0 event=0 ip=198.41.200.23
+2026-07-18T08:26:50Z ERR Serve tunnel error error="accept stream listener encountered a failure while serving" connIndex=0 event=0 ip=198.41.200.23
+2026-07-18T08:26:50Z INF Retrying connection in up to 1s connIndex=0 event=0 ip=198.41.200.23
+2026-07-18T08:26:50Z ERR Connection terminated connIndex=0
+2026-07-18T08:26:50Z ERR no more connections active and exiting
+2026-07-18T08:26:50Z INF Tunnel server stopped
+2026-07-18T08:26:50Z INF Metrics server stopped
+aswin@embedded631:~/websocket_test$ cloudflared tunnel --url http://localhost:8080
+

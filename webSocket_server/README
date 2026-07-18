@@ -1,0 +1,221 @@
+# Python WebSocket Audio Server
+
+## Dependency Installation Requirements
+
+### 1. System Requirements
+
+The application requires:
+
+* Ubuntu Linux
+* Python 3.10 or later
+* Python `pip`
+* PortAudio runtime library
+* PortAudio development library
+* ALSA audio subsystem
+
+---
+
+## 2. Install Operating-System Dependencies
+
+Run:
+
+```bash
+sudo apt update
+```
+
+Install PortAudio and ALSA dependencies:
+
+```bash
+sudo apt install -y \
+    libportaudio2 \
+    portaudio19-dev \
+    libasound2 \
+    libasound2-dev
+```
+
+These packages provide the native audio interface required by the Python `sounddevice` module.
+
+---
+
+## 3. Python Dependencies
+
+Create a file named:
+
+```text
+requirements.txt
+```
+
+with the following contents:
+
+```text
+websockets
+sounddevice
+numpy
+```
+
+Install the Python packages:
+
+```bash
+python3 -m pip install -r requirements.txt
+```
+
+---
+
+## 4. Verify Python Dependencies
+
+Run:
+
+```bash
+python3 -c "import websockets; print('websockets: OK')"
+```
+
+```bash
+python3 -c "import sounddevice; print('sounddevice: OK')"
+```
+
+```bash
+python3 -c "import numpy; print('numpy: OK')"
+```
+
+Expected result:
+
+```text
+websockets: OK
+sounddevice: OK
+numpy: OK
+```
+
+---
+
+## 5. Verify PortAudio
+
+Run:
+
+```bash
+ldconfig -p | grep portaudio
+```
+
+Expected output should contain:
+
+```text
+libportaudio.so.2
+```
+
+Verify the audio devices detected by PortAudio:
+
+```bash
+python3 -c "import sounddevice as sd; print(sd.query_devices())"
+```
+
+The system should list at least one audio output device.
+
+---
+
+## 6. Verify Linux Audio Devices
+
+Run:
+
+```bash
+aplay -l
+```
+
+This command lists available ALSA playback devices.
+
+Example:
+
+```text
+card 0: PCH [HDA Intel PCH]
+    device 0: Analog [Analog]
+```
+
+---
+
+## 7. Application Dependencies
+
+The Python WebSocket audio server uses:
+
+| Package       | Purpose                          |
+| ------------- | -------------------------------- |
+| `websockets`  | WebSocket server communication   |
+| `sounddevice` | Audio playback through PortAudio |
+| `numpy`       | Audio sample processing          |
+| `PortAudio`   | Native audio I/O backend         |
+| `ALSA`        | Linux audio subsystem            |
+
+---
+
+## 8. Complete Installation Procedure
+
+Execute:
+
+```bash
+sudo apt update
+```
+
+```bash
+sudo apt install -y \
+    libportaudio2 \
+    portaudio19-dev \
+    libasound2 \
+    libasound2-dev
+```
+
+Then install Python dependencies:
+
+```bash
+python3 -m pip install -r requirements.txt
+```
+
+Verify the installation:
+
+```bash
+python3 -c "import websockets, sounddevice, numpy; print('All Python dependencies installed successfully')"
+```
+
+Finally, run the server:
+
+```bash
+python3 webSocket_sever_audio02.py
+```
+
+---
+
+## 9. Dependency Architecture
+
+```text
+Python WebSocket Audio Server
+            |
+            +--------------------+
+            |                    |
+       websockets           sounddevice
+            |                    |
+            |                PortAudio
+            |                    |
+            |                  ALSA
+            |                    |
+            +-------- Linux Audio Hardware
+```
+
+---
+
+## 10. Recommended Project Structure
+
+```text
+webSocket_server/
+|
+|-- webSocket_sever_audio02.py
+|-- requirements.txt
+|-- README.md
+|
+```
+
+### `requirements.txt`
+
+```text
+websockets
+sounddevice
+numpy
+```
+
+The system-level PortAudio packages must be installed separately using the Linux package manager because they are native operating-system dependencies and cannot be installed through Python `pip`.
+

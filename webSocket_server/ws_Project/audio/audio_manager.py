@@ -1,18 +1,23 @@
 import asyncio
-import time
 
-from audio.audio_queue import audio_queue
+from audio.audio_queue import (
+    player_queue,
+    record_queue,
+    stt_queue
+)
+
 from audio.audio_player import AudioPlayer
 from audio.audio_recorder import AudioRecorder
 from audio.speech_to_text import SpeechToText
 
 
-AUDIO_TIMEOUT = 1.0   # seconds without packets = end of speech
-
-
 class AudioManager:
 
+
     def __init__(self):
+
+        print("[AUDIO MANAGER] Initializing")
+
 
         self.player = AudioPlayer()
 
@@ -20,132 +25,212 @@ class AudioManager:
 
         self.stt = SpeechToText()
 
-
-        self.recording = False
-
-        self.last_audio_time = 0
-
-
     async def run(self):
+
+        print(
+            "[AUDIO MANAGER] Running"
+        )
+
+
+        await asyncio.gather(
+
+            self.player_task(),
+
+            self.recorder_task(),
+
+            self.stt_task()
+
+        )
+
+    async def start(self):
 
         print("[AUDIO MANAGER] Started")
 
+
+        await asyncio.gather(
+
+            self.player_task(),
+
+            self.recorder_task(),
+
+            self.stt_task()
+
+        )
+
+
+
+    # ======================================================
+    # AUDIO PLAYBACK TASK
+    # ======================================================
+
+    async def player_task(self):
+
+        print(
+            "[AUDIO PLAYER TASK] Running"
+        )
+
+
         while True:
 
+            packet = await asyncio.to_thread(
+
+                player_queue.get
+
+            )
+
+
+            audio_data = packet["data"]
+
+
+            sequence = packet["sequence"]
+
+
             try:
-
-                # ------------------------------------
-                # Wait for next audio packet
-                # ------------------------------------
-
-                packet = await asyncio.to_thread(
-                    audio_queue.get
-                )
-
-
-                sequence_number, sample_count, sample_rate, audio_data = packet
-
-
-                # ------------------------------------
-                # New audio stream
-                # ------------------------------------
-
-                if not self.recording:
-
-                    print(
-                        "[AUDIO] Recording started"
-                    )
-
-                    self.recorder.start()
-
-                    self.recording = True
-
-
-
-                # ------------------------------------
-                # Update timestamp
-                # ------------------------------------
-
-                self.last_audio_time = time.time()
-
-
-
-                # ------------------------------------
-                # PLAY AUDIO
-                # ------------------------------------
 
                 self.player.play(
                     audio_data
                 )
 
 
-                # ------------------------------------
-                # SAVE AUDIO
-                # ------------------------------------
+                print(
+                    f"[PLAYER] Seq:{sequence}"
+                )
+
+
+            except Exception as error:
+
+                print(
+                    "[PLAYER ERROR]",
+                    error
+                )
+
+
+
+    # ======================================================
+    # AUDIO RECORDING TASK
+    # ======================================================
+
+    async def recorder_task(self):
+
+        print(
+            "[AUDIO RECORDER TASK] Running"
+        )
+
+
+        recording = False
+
+
+
+        while True:
+
+
+            packet = await asyncio.to_thread(
+
+                record_queue.get
+
+            )
+
+
+            audio_data = packet["data"]
+
+
+
+            try:
+
+
+                if not recording:
+
+
+                    self.recorder.start()
+
+
+                    recording = True
+
+
+                    print(
+                        "[RECORDER] Started"
+                    )
+
+
 
                 self.recorder.write(
+
                     audio_data
+
                 )
 
 
                 print(
-                    f"[AUDIO] Seq:{sequence_number}"
+
+                    f"[RECORDER] Seq:{packet['sequence']}"
+
                 )
 
 
-                # check if stream ended
 
-                await self.check_timeout()
+            except Exception as error:
+
+
+                print(
+
+                    "[RECORDER ERROR]",
+
+                    error
+
+                )
+
+    async def stt_task(self):
+
+        print(
+            "[STT TASK] Running"
+        )
+
+        while True:
+
+            packet = await asyncio.to_thread(
+
+                stt_queue.get
+
+            )
+
+            audio_data = packet["data"]
+
+            sequence = packet["sequence"]
+
+            print(
+                f"[STT] Processing Seq={sequence}"
+            )
+
+            try:
+
+                text = self.stt.process(
+
+                    audio_data
+
+                )
+
+                if text:
+                    print(
+                        "=============================="
+                    )
+
+                    print(
+                        "[STT TEXT]"
+                    )
+
+                    print(
+                        text
+                    )
+
+                    print(
+                        "=============================="
+                    )
 
 
 
             except Exception as error:
 
                 print(
-                    "[AUDIO MANAGER ERROR]",
+                    "[STT ERROR]",
                     error
                 )
-
-
-    async def check_timeout(self):
-
-        if not self.recording:
-
-            return
-
-
-        elapsed = (
-            time.time()
-            -
-            self.last_audio_time
-        )
-
-
-        if elapsed > AUDIO_TIMEOUT:
-
-
-            print(
-                "[AUDIO] Recording finished"
-            )
-
-
-            filename = self.recorder.stop()
-
-
-            self.recording = False
-
-
-            if filename:
-
-
-                text = self.stt.convert(
-                    filename
-                )
-
-
-                if text:
-
-                    print(
-                        "[TEXT RESULT]",
-                        text
-                    )

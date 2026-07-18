@@ -2,7 +2,15 @@ import os
 import wave
 import time
 
-from config.settings import *
+
+from config.settings import (
+    AUDIO_CHANNELS,
+    AUDIO_BITS_PER_SAMPLE,
+    AUDIO_SAMPLE_RATE,
+    AUDIO_RECORDING_DIRECTORY,
+    AUDIO_RECORDING_FILE_PREFIX
+)
+
 
 
 class AudioRecorder:
@@ -18,10 +26,12 @@ class AudioRecorder:
 
     def start(self):
 
-
         os.makedirs(
+
             AUDIO_RECORDING_DIRECTORY,
+
             exist_ok=True
+
         )
 
 
@@ -34,13 +44,17 @@ class AudioRecorder:
 
             AUDIO_RECORDING_DIRECTORY,
 
-            f"audio_{timestamp}.wav"
+            f"{AUDIO_RECORDING_FILE_PREFIX}_{timestamp}.wav"
+
         )
 
 
         self.file = wave.open(
+
             self.filename,
+
             "wb"
+
         )
 
 
@@ -50,12 +64,16 @@ class AudioRecorder:
 
 
         self.file.setsampwidth(
+
             AUDIO_BITS_PER_SAMPLE // 8
+
         )
 
 
         self.file.setframerate(
+
             AUDIO_SAMPLE_RATE
+
         )
 
 
@@ -64,18 +82,41 @@ class AudioRecorder:
             self.filename
         )
 
+
+
     def write(self, audio_data):
+
         if self.file:
-            self.file.writeframes( audio_data )
+
+            self.file.writeframes(
+                audio_data
+            )
+
+
 
     def stop(self):
 
         if self.file:
+
+
             self.file.close()
-            print( "[RECORDER] Saved:",   self.filename )
+
+
+            print(
+                "[RECORDER] Saved:",
+                self.filename
+            )
+
+
             filename = self.filename
+
+
             self.file = None
+
             self.filename = None
+
+
             return filename
+
 
         return None

@@ -17,7 +17,7 @@ class DataProcessing:
 
     def __init__(self, audio_manager):
 
-        self.audio_parser = AudioParser(audio_manager)
+        self.audio_parser = AudioParser()
 
     async def process(self, message):
 
@@ -117,4 +117,4 @@ class DataProcessing:
 
         print(  f"[AUDIO] Seq={sequence_number} "   f"Samples={sample_count}"  )
 
-        await self.audio_parser.parse( audio_data,   sequence_number, sample_count,  sample_rate  )
+        await self.audio_parser.parse( audio_data, sequence_number, sample_count,  sample_rate  )

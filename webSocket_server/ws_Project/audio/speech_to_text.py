@@ -1,4 +1,7 @@
-import speech_recognition as sr
+import json
+from vosk import Model, KaldiRecognizer
+
+from config.settings import AUDIO_SAMPLE_RATE
 
 
 class SpeechToText:
@@ -6,60 +9,84 @@ class SpeechToText:
 
     def __init__(self):
 
-        self.recognizer = sr.Recognizer()
+        print("[STT] Loading model...")
 
 
-
-    def convert(self, filename):
-
-        print(
-            "[STT] Processing:",
-            filename
+        self.model = Model(
+            "model/vosk-model-small-en-us-0.15"
         )
 
 
-        try:
+        self.recognizer = KaldiRecognizer(
+            self.model,
+            AUDIO_SAMPLE_RATE
+        )
 
-            with sr.AudioFile(
-                filename
-            ) as source:
+
+        print("[STT] Ready")
 
 
-                audio = self.recognizer.record(
-                    source
+
+    def process(self, audio_data):
+
+        """
+        audio_data = raw PCM16 bytes
+        """
+
+
+        if self.recognizer.AcceptWaveform(
+            audio_data
+        ):
+
+
+            result = json.loads(
+
+                self.recognizer.Result()
+
+            )
+
+
+            text = result.get(
+                "text",
+                ""
+            )
+
+
+            if text:
+
+                print(
+                    "[FINAL TEXT]",
+                    text
                 )
 
 
-            text = self.recognizer.recognize_google(
-                audio
+                return text
+
+
+
+        else:
+
+
+            partial = json.loads(
+
+                self.recognizer.PartialResult()
+
             )
 
 
-            print(
-                "[STT]",
-                text
+            partial_text = partial.get(
+                "partial",
+                ""
             )
 
+            if partial_text:
+                print(
+                    "[ENGLISH PARTIAL]",
+                    partial_text
+                )
 
-            return text
+                return partial_text
 
-
-
-        except sr.UnknownValueError:
-
-
-            print(
-                "[STT] Could not understand audio"
-            )
-
-
-        except Exception as error:
-
-
-            print(
-                "[STT ERROR]",
-                error
-            )
 
 
         return None
