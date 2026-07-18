@@ -5,6 +5,7 @@
 #include "time.h"
 #include <string.h>
 #include "esp_crt_bundle.h"
+#include "esp_timer.h"
 
 #include "esp_heap_caps.h"
 
@@ -13,6 +14,8 @@ static const char *TAG = "WEBSOCKET";
 bool ws_connected = false;
 
 static esp_websocket_client_handle_t client = NULL;
+
+static uint32_t audio_sequence = 0;
 
 static void websocket_event_handler(void *handler_args, esp_event_base_t base,int32_t event_id,void *event_data)
 {
@@ -103,18 +106,26 @@ bool websocket_client_is_connected(void)
     return esp_websocket_client_is_connected(client);
 }
 
+static uint32_t not_connected_count = 0;
+
 esp_err_t websocket_send_text(const char *message)
 {
     static int cnt = 0;
     char tx_msg[256];
 
     //ESP_LOGI(TAG, "websocket_send_text() called");
-    if(client == NULL)
+    if (client == NULL)
     {
-        ESP_LOGE(TAG, "Client handle is NULL");
+        not_connected_count++;
+        
+        if ((not_connected_count % 100U) == 0U)
+        {
+            ESP_LOGW(  TAG, "WebSocket not connected; audio packets discarded" );
+        }
+        
         return ESP_ERR_INVALID_STATE;
     }
-
+    
     //ESP_LOGI(TAG, "Client handle OK: %p", client);
     //ESP_LOGI( TAG, "ws_connected flag = %d",   ws_connected);
 
@@ -151,4 +162,55 @@ void websocket_client_stop(void)
         esp_websocket_client_destroy(client);
         client = NULL;
     }
+}
+
+esp_err_t websocket_send_audio(const audio_packet_t *packet)
+{
+    if (packet == NULL)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (client == NULL)
+    {
+        ESP_LOGW(
+            TAG,
+            "WebSocket client is NULL"
+        );
+
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    if (!esp_websocket_client_is_connected(client))
+    {
+        ESP_LOGW(
+            TAG,
+            "WebSocket is not connected"
+        );
+
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    int packet_size = sizeof(audio_packet_t);
+
+    int sent = esp_websocket_client_send_bin(
+        client,
+        (const char *)packet,
+        packet_size,
+        portMAX_DELAY
+    );
+
+    if (sent < 0)
+    {
+        ESP_LOGE(
+            TAG,
+            "Audio packet send failed"
+        );
+
+        return ESP_FAIL;
+    }
+
+    //ESP_LOGI(TAG, "Audio packet sent: seq=%lu samples=%u bytes=%d", (unsigned long)packet->sequence_number, packet->sample_count, sent );
+
+    return ESP_OK;
 }

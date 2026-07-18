@@ -12,6 +12,7 @@ idf_component_register(
         esp_netif
         esp-tls
         mbedtls
+        audio
         
    EMBED_TXTFILES
         "ngrok_ca.pem"

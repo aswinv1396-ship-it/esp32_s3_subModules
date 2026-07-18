@@ -26,7 +26,7 @@
 static const char *TAG = "MAIN";
 
 #define MAX_ATTEMPTS 4
-#define MIC_TASK_STACK_SIZE    4096
+#define MIC_TASK_STACK_SIZE    8192
 #define MIC_TASK_PRIORITY      5
 
 static const char *TAG_SNTP = "SNTP";
@@ -504,24 +504,44 @@ void app_main(void)
 
     print_memory_status();
 
-    /*
-     *------------------------------------------------------
+     /*------------------------------------------------------
      * STEP 9: Initialize WebSocket
      *------------------------------------------------------
      */
 
-    ret = websocket_client_init( "wss://bring-struck-photograph-kinda.trycloudflare.com");
+    //ret = websocket_client_init( "wss://bring-struck-photograph-kinda.trycloudflare.com");
 
-    if (ret != ESP_OK) { ESP_LOGE(TAG, "WebSocket initialization failed: %s", esp_err_to_name(ret)); return; }
+    ret = websocket_client_init("wss://donor-planet-suggesting-longitude.trycloudflare.com");
+    if (ret != ESP_OK) 
+    { 
+        ESP_LOGE(TAG, "WebSocket initialization failed: %s", esp_err_to_name(ret)); 
+        return; 
+    }
 
     ESP_LOGI(TAG, "WebSocket client started");
 
-    int cnt = 0 ;
+    /* Wait for connection */
+    while (!websocket_client_is_connected())
+    {
+        ESP_LOGI( TAG, "Waiting for WebSocket connection..." );
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+    
+    /*------------------------------------------------------
+     * STEP 8: Print memory before WebSocket
+     *-----------------------------------------------------*/
+
+    xTaskCreate( mic_task, "mic_task",MIC_TASK_STACK_SIZE, NULL, MIC_TASK_PRIORITY, NULL);
+
+    UBaseType_t watermark = uxTaskGetStackHighWaterMark(NULL);
+    ESP_LOGI(TAG,"Mic task remaining stack: %u",(unsigned int)watermark);
+
+    //int cnt = 0 ;
 
     while (1)
     {
         ret =  websocket_send_text( "ESP32_TEST_PACKET :");
-
+        /*
         if (ret == ESP_OK) 
         { 
             ESP_LOGI(TAG, "Packet sent"); 
@@ -530,7 +550,7 @@ void app_main(void)
         { 
             ESP_LOGE(TAG, "Send failed"); 
         }
-
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        */
+        vTaskDelay(pdMS_TO_TICKS(3000));
     }
 }

@@ -9,6 +9,7 @@ idf_component_register(
         rgb_led
         button
         mic
+        audio
         wifi
         console
         webSocket
