@@ -1,6 +1,7 @@
 idf_component_register(
     SRCS
         "wifi_manager.c"
+        "ap_manager.c"
 
     INCLUDE_DIRS
         "."

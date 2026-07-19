@@ -13,4 +13,5 @@ idf_component_register(
         console
         webSocket
         time
+        webPortal
 )

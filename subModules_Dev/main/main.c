@@ -11,6 +11,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+#include "esp_netif_sntp.h"
 #include "esp_log.h"
 #include <time.h>
 
@@ -19,8 +20,8 @@
 #include "inmp441.h"
 #include "websocket_client.h"
 #include "time_sync.h"
-#include "esp_netif_sntp.h"
-
+#include "webportal.h"
+#include "ap_manager.h"
 
 static const char *TAG = "MAIN";
 
@@ -400,40 +401,42 @@ static bool wifi_setup_process(void)
         }
     }
 }
+
 void app_main(void)
 {
-    /*
-     *------------------------------------------------------
-     * STEP 1: Start USB console
-     *------------------------------------------------------
-     */
-
     console_manager_init();
 
+    esp_err_t ret =  wifi_manager_init();
 
-    /*
-     *------------------------------------------------------
-     * STEP 2: Initialize WiFi
-     *------------------------------------------------------
-     */
-
-    esp_err_t ret =
-        wifi_manager_init();
-
-    if (ret != ESP_OK) { ESP_LOGE(TAG, "WiFi initialization failed"); return; }
+    if (ret != ESP_OK) 
+    { 
+        ESP_LOGE(TAG, "WiFi initialization failed"); 
+        return; 
+    }
 
     ESP_LOGI(TAG, "WiFi manager ready");
 
+    ESP_ERROR_CHECK(ap_manager_init());
 
-    /*
-     *------------------------------------------------------
-     * STEP 3: Start user WiFi setup
-     *------------------------------------------------------
-     */
+    ESP_LOGI(TAG, "AP Manager Ready");
 
-    if (wifi_setup_process()) { ESP_LOGI(TAG, "Network setup successful"); }
-    else { ESP_LOGE(TAG, "Network setup stopped"); return; }
+    ESP_ERROR_CHECK(ap_manager_start());
 
+    ESP_LOGI(TAG, "Local Hotspot Ready");
+
+    ESP_ERROR_CHECK(webportal_init());
+
+    ESP_LOGI(TAG, "Local Web Portal Ready");
+
+    if (wifi_setup_process()) 
+    { 
+        ESP_LOGI(TAG, "Network setup successful"); 
+    }
+    else 
+    { 
+        ESP_LOGE(TAG, "Network setup stopped"); 
+        return; 
+    }
 
     /*
      *------------------------------------------------------

@@ -293,20 +293,17 @@ esp_err_t wifi_manager_deinit(void)
         return ESP_OK;
 
     esp_wifi_stop();
-
     esp_wifi_deinit();
 
     if(wifi_sta_netif)
     {
         esp_netif_destroy( wifi_sta_netif);
-
         wifi_sta_netif = NULL;
     }
 
     if(wifi_event_group)
     {
         vEventGroupDelete( wifi_event_group);
-
         wifi_event_group=NULL;
     }
 
