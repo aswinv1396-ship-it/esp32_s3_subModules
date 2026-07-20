@@ -17,25 +17,26 @@
 
 static const char *TAG = "wifi_manager";
 
-static EventGroupHandle_t wifi_event_group;
+static EventGroupHandle_t wifi_event_group = NULL;
 
 static esp_netif_t *wifi_sta_netif = NULL;
-
-static saved_wifi_t saved_wifi_list[WIFI_MAX_SAVED_NETWORKS] =
+/*
+saved_wifi_t saved_wifi =
 {
-    { .valid = false },
-    { .valid = false },
-    { .valid = false },
-    { .valid = false },
-    { .valid = false }
+    .ssid = "test",
+    .password = "1234567v",
+    .valid = true
 };
-
+*/
+// Initialize the 5-slot history array to zeroes
+saved_wifi_t saved_wifi[WIFI_HISTORY_MAX] = {0};
 
 static char selected_ssid[33]={0};
 static char current_password[64]={0};
 
 static bool wifi_initialized = false;
 static bool wifi_connected = false;
+
 
 /*
  * WiFi event handler
@@ -415,6 +416,7 @@ esp_err_t wifi_manager_connect(const char *ssid, const char *password)
     return ESP_FAIL;
 }
 
+
 /*
  * Check connection
  */
@@ -440,63 +442,172 @@ char *wifi_manager_get_selected_ssid(void)
     return selected_ssid;
 }
 
+/*-------------------------------------------------------
+ * Helper Function: Manages history array shifting
+ *------------------------------------------------------*/
+void wifi_manager_add_to_history(const char *ssid, const char *password)
+{
+    if (ssid == NULL || strlen(ssid) == 0) return;
+
+    int target_index = -1;
+
+    // 1. Look for existing network entries to avoid duplicates
+    for (int i = 0; i < WIFI_HISTORY_MAX; i++) {
+        if (saved_wifi[i].valid && strcmp(saved_wifi[i].ssid, ssid) == 0) {
+            target_index = i;
+            break;
+        }
+    }
+
+    // 2. Duplicate found: Extract its info, shift elements up, and reset it to slot 0
+    if (target_index != -1) {
+        saved_wifi_t existing = saved_wifi[target_index];
+        if (password != NULL) {
+            strncpy(existing.password, password, sizeof(existing.password) - 1);
+        }
+        for (int i = target_index; i > 0; i--) {
+            saved_wifi[i] = saved_wifi[i - 1];
+        }
+        saved_wifi[0] = existing;
+        return;
+    }
+
+    // 3. New Network found: Drop the 5th network, shift others down to clear slot 0
+    for (int i = WIFI_HISTORY_MAX - 1; i > 0; i--) {
+        saved_wifi[i] = saved_wifi[i - 1];
+    }
+
+    // 4. Populate slot 0 with the newest configuration
+    memset(&saved_wifi[0], 0, sizeof(saved_wifi_t));
+    strncpy(saved_wifi[0].ssid, ssid, sizeof(saved_wifi[0].ssid) - 1);
+    if (password != NULL) {
+        strncpy(saved_wifi[0].password, password, sizeof(saved_wifi[0].password) - 1);
+    }
+    saved_wifi[0].valid = true;
+    
+    ESP_LOGI(TAG, "Network '%s' added to history index", ssid);
+}
+
+/*-------------------------------------------------------
+ * Updated: Stores entire history array into NVS Flash
+ *------------------------------------------------------*/
 esp_err_t wifi_manager_save_credentials(void)
 {
-
     nvs_handle_t nvs;
 
-    esp_err_t ret = nvs_open("wifi",  NVS_READWRITE,  &nvs  );
+    // First update the internal runtime history array layout
+    wifi_manager_add_to_history(selected_ssid, current_password);
 
+    esp_err_t ret = nvs_open("wifi", NVS_READWRITE, &nvs);
     if(ret != ESP_OK)
         return ret;
 
-    ret = nvs_set_str( nvs, "ssid", selected_ssid);
-    if(ret!=ESP_OK)
-	{
-   		nvs_close(nvs);
-    	return ret;
-	}
-
-    ret = nvs_set_str( nvs, "password", current_password );
-    if(ret!=ESP_OK)
-	{
-    	nvs_close(nvs);
-    	return ret;
-	}
+    // Save the entire 5-network profile configuration block to NVS flash memory
+    ret = nvs_set_blob(nvs, "wifi_hist_blob", saved_wifi, sizeof(saved_wifi));
+    if(ret != ESP_OK)
+    {
+        nvs_close(nvs);
+        return ret;
+    }
     
-    ret =  nvs_commit(nvs);
+    ret = nvs_commit(nvs);
     nvs_close(nvs);
+    
     if(ret == ESP_OK)
     {
-        strcpy( saved_wifi.ssid, selected_ssid);
-
-        strcpy( saved_wifi.password,  current_password );
-
-        saved_wifi.valid=true;
-
-        ESP_LOGI( "WIFI_MANAGER", "Credentials stored"  );
+        ESP_LOGI("WIFI_MANAGER", "Credentials profile history block successfully stored");
     }
 
     return ret;
 }
+
+/*-------------------------------------------------------
+ * New Loader Function: Read history out of NVS on startup
+ *------------------------------------------------------*/
+esp_err_t wifi_manager_load_credentials(void)
+{
+    nvs_handle_t nvs;
+    esp_err_t ret = nvs_open("wifi", NVS_READONLY, &nvs);
+    if(ret != ESP_OK)
+        return ret;
+
+    size_t required_size = sizeof(saved_wifi);
+    ret = nvs_get_blob(nvs, "wifi_hist_blob", saved_wifi, &required_size);
+    
+    nvs_close(nvs);
+    
+    if (ret == ESP_OK) {
+        ESP_LOGI(TAG, "Loaded %d stored Wi-Fi history files from flash memory.", WIFI_HISTORY_MAX);
+    }
+    return ret;
+}
+
+/*-------------------------------------------------------
+ * Scan and Auto-Connect Known Networks Loop
+ *------------------------------------------------------*/
+bool wifi_manager_scan_and_connect_known(wifi_ap_info_t *scanned_aps, int scanned_count)
+{
+    ESP_LOGI(TAG, "Parsing %d scanned networks against history profiles...", scanned_count);
+
+    if (scanned_aps == NULL || scanned_count == 0) 
+    {
+        ESP_LOGW(TAG, "Scan results empty. Moving straight to portal config mode.");
+        return false;
+    }
+
+    // Outer-loop checks structural history array positions sequentially (Slot 0 is highest priority)
+    for (int h = 0; h < WIFI_HISTORY_MAX; h++) 
+    {
+        if (!saved_wifi[h].valid) 
+            continue;
+
+        // Inner-loop: Check if the current profile matches a live visible hotspot
+        for (int s = 0; s < scanned_count; s++) 
+        {
+            if (strcmp(scanned_aps[s].ssid, saved_wifi[h].ssid) == 0) 
+            {
+                ESP_LOGI(TAG, "Match Found! Stored network '%s' is visible (RSSI: %d dBm)", 
+                         saved_wifi[h].ssid, scanned_aps[s].rssi);
+                
+                // Configure local state properties context before firing initialization wrappers
+                wifi_manager_set_selected_ssid(saved_wifi[h].ssid);
+                wifi_manager_set_password(saved_wifi[h].password);
+
+                // Attempt network connection sequence
+                esp_err_t ret = wifi_manager_connect(saved_wifi[h].ssid, saved_wifi[h].password);
+
+                if (ret == ESP_OK) 
+                {
+                    ESP_LOGI(TAG, "Successfully background connected to network: '%s'!", saved_wifi[h].ssid);
+                    // Rearrange hierarchy stack to push this profile to position index 0
+                    wifi_manager_save_credentials(); 
+                    return true; 
+                }
+
+                // If connection drops or returns error, loop continues to seek next match profile
+                ESP_LOGE(TAG, "Connection failed for '%s' (Wrong password or timeout). Trying next...", saved_wifi[h].ssid);
+            }
+        }
+    }
+
+    ESP_LOGW(TAG, "No historical networks could connect successfully. Remaining in portal configuration mode.");
+    return false;
+}
+
 /*
  * Get local IP address
  */
-esp_err_t wifi_manager_get_ip(char *ip,size_t len)
+esp_err_t wifi_manager_get_ip(char *ip, size_t len)
 {
-
     if(ip == NULL || len == 0)
         return ESP_ERR_INVALID_ARG;
 
     esp_netif_ip_info_t ip_info;
-
     esp_err_t ret = esp_netif_get_ip_info(wifi_sta_netif, &ip_info);
-
     if(ret != ESP_OK)
         return ret;
 
     snprintf(ip, len, IPSTR, IP2STR(&ip_info.ip));
-
     return ESP_OK;
 }
 
@@ -510,9 +621,9 @@ void wifi_manager_set_password(char *password)
     if(password == NULL)
         return;
 
-    memset(current_password,0,sizeof(current_password));
-    strncpy(current_password, password, sizeof(current_password)-1);
-    ESP_LOGI( "WIFI_MANAGER", "Password updated" );
+    memset(current_password, 0, sizeof(current_password));
+    strncpy(current_password, password, sizeof(current_password) - 1);
+    ESP_LOGI("WIFI_MANAGER", "Password updated");
 }
 
 /*
@@ -520,7 +631,6 @@ void wifi_manager_set_password(char *password)
  */
 esp_err_t wifi_manager_deinit(void)
 {
-
     if(!wifi_initialized)
         return ESP_OK;
 
@@ -529,20 +639,19 @@ esp_err_t wifi_manager_deinit(void)
 
     if(wifi_sta_netif)
     {
-        esp_netif_destroy( wifi_sta_netif);
+        esp_netif_destroy(wifi_sta_netif);
         wifi_sta_netif = NULL;
     }
 
     if(wifi_event_group)
     {
-        vEventGroupDelete( wifi_event_group);
-        wifi_event_group=NULL;
+        vEventGroupDelete(wifi_event_group);
+        wifi_event_group = NULL;
     }
 
-    wifi_connected=false;
-    wifi_initialized=false;
+    wifi_connected = false;
+    wifi_initialized = false;
 
     ESP_LOGI(TAG, "WiFi manager stopped");
-
     return ESP_OK;
 }

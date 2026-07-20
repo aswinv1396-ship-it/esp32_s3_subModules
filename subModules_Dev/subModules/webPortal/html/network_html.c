@@ -1,364 +1,301 @@
 #include "network_html.h"
 
 const char NETWORK_CONTENT[] =
-
-
 "<div class='network-page'>"
 
 /* =========================================================
  * ACCESS POINT BOX
  * ========================================================= */
-
 "<div class='card'>"
-
 "<h1>📶 Access Point</h1>"
-
 "<div class='info'>"
-
-"<p><b>SSID:</b> <span id='ap-ssid'>ESP32-Assistant</span></p>"
-"<p><b>IP Address:</b> <span id='ap-ip'>192.168.4.1</span></p>"
-"<p><b>Status:</b> <span id='ap-status'>Active</span></p>"
-"<p><b>Clients:</b> <span id='ap-clients'>-</span></p>"
-
+"<div class='stat-row'><b>SSID:</b> <span id='ap-ssid' class='ready'>ESP32-Assistant</span></div>"
+"<div class='stat-row'><b>IP Address:</b> <span id='ap-ip'>192.168.4.1</span></div>"
+"<div class='stat-row'><b>Status:</b> <span id='ap-status' class='online'>Active</span></div>"
+"<div class='stat-row'><b>Clients:</b> <span id='ap-clients'>-</span></div>"
 "</div>"
-
 "</div>"
-
 
 /* =========================================================
  * WIFI MANAGER BOX
  * ========================================================= */
-
 "<div class='card'>"
-
 "<h2>🌐 WiFi Manager</h2>"
-
 "<div class='wifi-status-box'>"
-
-"<p><b>Status:</b> "
-"<span id='wifi-status' class='status-disconnected'>Disconnected</span>"
-"</p>"
-
-"<p><b>SSID:</b> "
-"<span id='wifi-ssid'>Not Connected</span>"
-"</p>"
-
-"<p><b>IP Address:</b> "
-"<span id='wifi-ip'>-</span>"
-"</p>"
-
-"<p><b>Signal:</b> "
-"<span id='wifi-rssi'>-</span>"
-"</p>"
-
+"<div class='stat-row'><b>Status:</b> <span id='wifi-status' class='status-disconnected'>Disconnected</span></div>"
+"<div class='stat-row'><b>SSID:</b> <span id='wifi-ssid'>Not Connected</span></div>"
+"<div class='stat-row'><b>IP Address:</b> <span id='wifi-ip'>-</span></div>"
+"<div class='stat-row'><b>Signal:</b> <span id='wifi-rssi'>-</span></div>"
 "</div>"
 
+"<button class='scan-btn' onclick='scanWifi()'>🔍 Scan Networks</button>"
 
-"<button class='scan-btn' onclick='scanWifi()'>"
-"🔍 Scan Networks"
-"</button>"
-
-
+"<div id='networks-container'>"
 "<div id='networks'>"
-"<p>Press scan to find networks</p>"
+"<p style='color:#8a99ad; margin-top:15px; font-style:italic;'>Press scan to find nearby networks</p>"
+"</div>"
+"</div>"
 "</div>"
 
-
 "</div>"
-
-
-"</div>"
-
 
 /* =========================================================
- * CSS
+ * CSS STYLING
  * ========================================================= */
-
 "<style>"
-
 ".network-page{"
 "display:flex;"
 "flex-direction:column;"
 "align-items:center;"
-"gap:20px;"
-"padding:15px;"
+"gap:25px;"
+"padding:20px;"
+"font-family:'Segoe UI',Arial,sans-serif;"
 "}"
-
 
 ".card{"
-"width:95%;"
+"width:100%;"
 "max-width:420px;"
-"background:#ffffff;"
-"border-radius:15px;"
-"padding:20px;"
-"box-shadow:0 4px 10px rgba(0,0,0,0.15);"
+"padding:35px 30px;"
+"border-radius:24px;"
+"background:linear-gradient(135deg,rgba(255,255,255,0.07),rgba(255,255,255,0.02));"
+"backdrop-filter:blur(25px);"
+"-webkit-backdrop-filter:blur(25px);"
+"border:1px solid rgba(255,255,255,0.15);"
+"box-shadow:0 20px 45px rgba(0,0,0,0.5),"
+"inset 0 1px 0 rgba(255,255,255,0.25);"
+"text-align:center;"
 "}"
 
-
-".info p,"
-".wifi-status-box p{"
-"margin:10px 0;"
-"font-size:16px;"
+"h1{"
+"font-size:28px;"
+"font-weight:800;"
+"background:linear-gradient(135deg,#79bbff 0%,#58a6ff 100%);"
+"-webkit-background-clip:text;"
+"-webkit-text-fill-color:transparent;"
+"margin-bottom:20px;"
 "}"
 
+"h2{"
+"font-size:24px;"
+"font-weight:700;"
+"color:#e2e8f0;"
+"margin-bottom:20px;"
+"text-transform:uppercase;"
+"letter-spacing:0.5px;"
+"}"
+
+".stat-row{"
+"display:flex;"
+"justify-content:space-between;"
+"align-items:center;"
+"margin:12px 0;"
+"font-size:15px;"
+"color:#cbd5e1;"
+"}"
 
 ".wifi-status-box{"
-"background:#f5f5f5;"
-"border-radius:10px;"
-"padding:12px;"
-"margin-bottom:15px;"
+"background:rgba(0,0,0,0.3);"
+"border-radius:16px;"
+"padding:15px 20px;"
+"margin-bottom:20px;"
+"border:1px solid rgba(255,255,255,0.05);"
+"box-shadow:inset 0 2px 6px rgba(0,0,0,0.4);"
 "}"
 
+".online{"
+"color:#00ffaa;"
+"font-weight:bold;"
+"text-shadow:0 0 10px rgba(0,255,170,0.3);"
+"}"
+
+".ready{"
+"color:#6db3ff;"
+"font-weight:bold;"
+"text-shadow:0 0 10px rgba(109,179,255,0.3);"
+"}"
 
 ".status-connected{"
-"color:green;"
-"font-weight:bold;"
+"color:#00ffaa;"
+"font-weight:900;"
+"text-transform:uppercase;"
+"text-shadow:0 0 10px rgba(0,255,170,0.4);"
 "}"
-
 
 ".status-disconnected{"
-"color:red;"
-"font-weight:bold;"
+"color:#ff4a5a;"
+"font-weight:900;"
+"text-transform:uppercase;"
+"text-shadow:0 0 10px rgba(255,74,90,0.4);"
 "}"
-
 
 ".scan-btn{"
 "width:100%;"
 "padding:14px;"
-"font-size:18px;"
-"border-radius:10px;"
-"border:none;"
-"background:#1976d2;"
+"font-size:16px;"
+"font-weight:bold;"
+"border-radius:14px;"
+"background:linear-gradient(180deg,#58a6ff 0%,#1f75cb 100%);"
 "color:white;"
+"border:1px solid #1f75cb;"
+"box-shadow:0 4px 0 #114b85,"
+"0 6px 12px rgba(88,166,255,0.25),"
+"inset 0 1px 0 rgba(255,255,255,0.3);"
 "cursor:pointer;"
+"transition:all 0.1s ease;"
+"text-transform:uppercase;"
+"letter-spacing:0.5px;"
 "}"
 
+".scan-btn:hover{"
+"background:linear-gradient(180deg,#70b5ff 0%,#2682e6 100%);"
+"transform:translateY(-1px);"
+"box-shadow:0 5px 0 #114b85, 0 8px 16px rgba(88,166,255,0.35);"
+"}"
+
+".scan-btn:active{"
+"transform:translateY(3px);"
+"box-shadow:0 1px 0 #114b85, 0 2px 4px rgba(0,0,0,0.2);"
+"}"
 
 ".wifi-btn{"
 "width:100%;"
-"padding:12px;"
-"margin-top:10px;"
-"border-radius:10px;"
-"border:1px solid #aaa;"
-"background:#f5f5f5;"
-"font-size:16px;"
+"padding:14px 18px;"
+"margin-top:12px;"
+"border-radius:12px;"
+"border:1px solid rgba(255,255,255,0.1);"
+"background:rgba(255,255,255,0.06);"
+"color:#f0f3f8;"
+"font-size:15px;"
+"font-weight:500;"
+"text-align:left;"
+"display:flex;"
+"justify-content:space-between;"
+"align-items:center;"
 "cursor:pointer;"
+"transition:all 0.2s ease;"
+"box-shadow:0 4px 6px rgba(0,0,0,0.15);"
 "}"
 
+".wifi-btn:hover{"
+"background:rgba(255,255,255,0.15);"
+"border-color:rgba(88,166,255,0.5);"
+"transform:translateX(4px);"
+"color:#58a6ff;"
+"}"
 
+"#networks p{"
+"font-size:14px;"
+"}"
 "</style>"
 
-
 /* =========================================================
- * JAVASCRIPT
+ * JAVASCRIPT LOGIC
  * ========================================================= */
-
 "<script>"
-
-
-/* ---------------------------------------------------------
- * Load WiFi status when page opens
- * --------------------------------------------------------- */
+"let isWifiConnected = false;"
 
 "document.addEventListener('DOMContentLoaded', function(){"
-
 "updateWifiStatus();"
-
 "});"
-
-
-/* ---------------------------------------------------------
- * Get current WiFi status
- * --------------------------------------------------------- */
 
 "function updateWifiStatus(){"
-
 "fetch('/api/wifi/status')"
-
-".then(function(response){"
-
-"return response.json();"
-
-"})"
-
+".then(function(res){ return res.json(); })"
 ".then(function(data){"
-
 "console.log('WiFi Status:', data);"
 
-
 "if(data.connected === true){"
-
+"isWifiConnected = true;"
 "document.getElementById('wifi-status').innerText='Connected';"
-
 "document.getElementById('wifi-status').className='status-connected';"
-
 "document.getElementById('wifi-ssid').innerText=data.ssid;"
-
 "document.getElementById('wifi-ip').innerText=data.ip;"
-
 "document.getElementById('wifi-rssi').innerText=data.rssi + ' dBm';"
 
+/* 👉 Rule: If connected, empty out and completely hide the scan list container */
+"document.getElementById('networks').innerHTML='';"
+"document.getElementById('networks-container').style.display='none';"
 "}"
-
 "else{"
-
+"isWifiConnected = false;"
 "document.getElementById('wifi-status').innerText='Disconnected';"
-
 "document.getElementById('wifi-status').className='status-disconnected';"
-
 "document.getElementById('wifi-ssid').innerText='Not Connected';"
-
 "document.getElementById('wifi-ip').innerText='-';"
-
 "document.getElementById('wifi-rssi').innerText='-';"
 
+/* Restore visibility of the list container if a disconnection happens */
+"document.getElementById('networks-container').style.display='block';"
 "}"
-
 "})"
-
-".catch(function(error){"
-
-"console.error('WiFi status error:', error);"
-
+".catch(function(err){"
+"console.error('WiFi status error:', err);"
 "});"
-
 "}"
-
-
-/* ---------------------------------------------------------
- * Periodically update status
- * --------------------------------------------------------- */
 
 "setInterval(updateWifiStatus, 5000);"
 
-
-/* ---------------------------------------------------------
- * Scan WiFi
- * --------------------------------------------------------- */
-
 "function scanWifi(){"
+/* Do not process rendering a scan list if device is securely connected */
+"if(isWifiConnected){"
+"alert('Device is already connected. Disconnect from router before searching new profiles.');"
+"return;"
+"}"
 
-"document.getElementById('networks').innerHTML='Scanning...';"
+"document.getElementById('networks').innerHTML='<p style=\"color:#58a6ff; margin-top:15px; font-weight:bold;\">⏳ Scanning airwaves...</p>';"
 
 "fetch('/api/wifi/scan')"
-
-".then(function(response){"
-
-"return response.json();"
-
-"})"
-
+".then(function(res){ return res.json(); })"
 ".then(function(data){"
-
 "let html='';"
-
-
 "if(data.networks.length === 0){"
-
-"html='<p>No networks found</p>';"
-
+"html='<p style=\"color:#ff4a5a; margin-top:15px;\">❌ No networks found</p>';"
 "}"
-
 
 "data.networks.forEach(function(n){"
-
 "html += '<button class=\"wifi-btn\" onclick=\"selectWifi(\\''"
-
 "+ n.ssid.replace(/'/g, \"\\\\'\")"
-
 "+ '\\')\">';"
-
-"html += n.ssid + ' (' + n.rssi + ' dBm)';"
-
+"html += '<span>🔹 ' + n.ssid + '</span>';"
+"html += '<span style=\"color:#8a99ad; font-size:13px;\">' + n.rssi + ' dBm</span>';"
 "html += '</button>';"
-
 "});"
-
 
 "document.getElementById('networks').innerHTML=html;"
-
 "})"
-
-".catch(function(error){"
-
-"document.getElementById('networks').innerHTML='Scan failed';"
-
-"console.error(error);"
-
+".catch(function(err){"
+"document.getElementById('networks').innerHTML='<p style=\"color:#ff4a5a; margin-top:15px;\">⚠️ Scan failed</p>';"
+"console.error(err);"
 "});"
-
 "}"
-
-
-/* ---------------------------------------------------------
- * Select WiFi
- * --------------------------------------------------------- */
 
 "function selectWifi(ssid){"
-
 "fetch('/api/wifi/select?ssid=' + encodeURIComponent(ssid))"
-
-".then(function(response){"
-
-"return response.json();"
-
-"})"
-
+".then(function(res){ return res.json(); })"
 ".then(function(data){"
-
 "if(data.status === 'selected'){"
-
-"let pass = prompt('Enter WiFi password');"
-
-
+"let pass = prompt('Enter password for network: ' + ssid);"
 "if(pass !== null){"
-
 "connectWifi(pass);"
-
 "}"
-
 "}"
-
 "});"
-
 "}"
-
-
-/* ---------------------------------------------------------
- * Connect WiFi
- * --------------------------------------------------------- */
 
 "function connectWifi(password){"
-
 "fetch('/api/wifi/connect',{"
-
 "method:'POST',"
-
-"headers:{"
-
-"'Content-Type':'application/x-www-form-urlencoded'"
-
-"},"
-
+"headers:{'Content-Type':'application/x-www-form-urlencoded'},"
 "body:'password=' + encodeURIComponent(password)"
-
 "})"
-
-".then(function(response){"
-
-"return response.json();"
-
-"})"
-
+".then(function(res){ return res.json(); })"
 ".then(function(data){"
-
-"alert(JSON.stringify(data));"
-
-"setTimeout(updateWifiStatus, 1000);"
-
-"});"
-
+"if(data.status === 'connected'){"
+"updateWifiStatus();"
 "}"
-
-
+"else {"
+"alert('Connection initialization failed or invalid credential configuration.');"
+"}"
+"});"
+"}"
 "</script>";

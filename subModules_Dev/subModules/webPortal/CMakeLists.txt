@@ -26,6 +26,8 @@ idf_component_register(
         
     PRIV_REQUIRES
         wifi
+        esp_timer
+        driver
 
     REQUIRES
     	esp_wifi

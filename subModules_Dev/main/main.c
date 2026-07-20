@@ -22,6 +22,7 @@
 #include "time_sync.h"
 #include "webportal.h"
 #include "ap_manager.h"
+#include "oled.h"
 
 static const char *TAG = "MAIN";
 
@@ -229,17 +230,22 @@ static bool check_internet(void)
 
     return false;
 }
-
+/*
+ * Console Function: Find Saved Network
+ * Updated to check the latest active profile (index 0) in the history array
+ */
 int find_saved_network(wifi_ap_info_t *aps, int ap_count)
 {
-    if (!saved_wifi.valid)
+    // Check if the latest slot 0 in the history array has valid data
+    if (!saved_wifi[0].valid)
     {
         return -1;
     }
 
     for (int i = 0; i < ap_count; i++)
     {
-        if (strcmp(saved_wifi.ssid, aps[i].ssid) == 0)
+        // Compare scanned networks against slot 0
+        if (strcmp(saved_wifi[0].ssid, aps[i].ssid) == 0)
         {
             return i;
         }
@@ -248,11 +254,16 @@ int find_saved_network(wifi_ap_info_t *aps, int ap_count)
     return -1;
 }
 
+/*
+ * Console Function: Connect to Saved Network
+ * Updated to utilize slot 0 credentials from your history array
+ */
 bool connect_saved_network(wifi_ap_info_t *ap)
 {
     console_print("\nConnecting to saved network: %s\n", ap->ssid);
 
-    esp_err_t ret = wifi_manager_connect(saved_wifi.ssid, saved_wifi.password);
+    // Read credentials strictly from index 0
+    esp_err_t ret = wifi_manager_connect(saved_wifi[0].ssid, saved_wifi[0].password);
 
     if (ret != ESP_OK || !wifi_manager_is_connected())
     {
@@ -261,7 +272,6 @@ bool connect_saved_network(wifi_ap_info_t *ap)
     }
 
     char ip[16];
-
     if (wifi_manager_get_ip(ip, sizeof(ip)) == ESP_OK)
     {
         console_print("IP Address: %s\n", ip);
@@ -274,45 +284,43 @@ bool connect_saved_network(wifi_ap_info_t *ap)
     }
 
     console_print("Connected but internet unavailable.\n");
-
     return false;
 }
 
-
+/*
+ * Console Function: Interactive User Configuration Process
+ * Updated to properly reference index 0 for notifications
+ */
 static bool wifi_setup_process(void)
 {
     wifi_ap_info_t aps[WIFI_MAX_AP];
 
     while(1)
     {
+        console_print("\nScanning WiFi networks...\n");
 
-        console_print( "\nScanning WiFi networks...\n");
-
-        int ap_count = wifi_manager_scan( aps,  WIFI_MAX_AP);
+        int ap_count = wifi_manager_scan(aps, WIFI_MAX_AP);
         if(ap_count <= 0)
         {
-            console_print( "No WiFi networks found\n");
+            console_print("No WiFi networks found\n");
             return false;
         }
 
         console_print("\nAvailable WiFi Networks:\n");
-        console_print( "============================\n");
-
+        console_print("============================\n");
         for(int i = 0; i < ap_count; i++)
         {
-
-            console_print( "%d) SSID: %s  RSSI:%d  CH:%d\n", i + 1, aps[i].ssid, aps[i].rssi,aps[i].channel);
-
+            console_print("%d) SSID: %s  RSSI:%d  CH:%d\n", i + 1, aps[i].ssid, aps[i].rssi, aps[i].channel);
         }
-
-        console_print(  "============================\n");
+        console_print("============================\n");
 
         int saved_index = find_saved_network(aps, ap_count);
         if (saved_index >= 0)
         {
             char ans[8];
             
-            console_print("\nSaved network \"%s\" found.\n", saved_wifi.ssid);       
+            // Fixed: Referencing slot 0 array syntax cleanly here
+            console_print("\nSaved network \"%s\" found.\n", saved_wifi[0].ssid);       
             console_read_string("Connect to saved network? (y/n): ", ans, sizeof(ans));
             
             if (ans[0] == 'y' || ans[0] == 'Y')
@@ -325,11 +333,10 @@ static bool wifi_setup_process(void)
             }
         }
 
-        int selection =  console_read_int(  "Select WiFi number: ");
-
+        int selection = console_read_int("Select WiFi number: ");
         if(selection < 1 || selection > ap_count)
         {
-            console_print(  "Invalid WiFi selection\n");
+            console_print("Invalid WiFi selection\n");
             continue;
         }
 
@@ -340,35 +347,38 @@ static bool wifi_setup_process(void)
         while(attempt < MAX_ATTEMPTS)
         {
             char password[64];
-            console_read_string(  "Enter password: ",  password,   sizeof(password));
+            console_read_string("Enter password: ", password, sizeof(password));
 
-            console_print( "\nConnecting to %s...\n",   aps[selection-1].ssid);
+            console_print("\nConnecting to %s...\n", aps[selection-1].ssid);
 
-            esp_err_t ret =    wifi_manager_connect( aps[selection-1].ssid,   password);
+            // Prime active credential states before connecting
+            wifi_manager_set_selected_ssid(aps[selection-1].ssid);
+            wifi_manager_set_password(password);
 
-            if(ret == ESP_OK &&  wifi_manager_is_connected())
+            esp_err_t ret = wifi_manager_connect(aps[selection-1].ssid, password);
+
+            if(ret == ESP_OK && wifi_manager_is_connected())
             {
-
-                console_print( "WiFi connected\n");
+                console_print("WiFi connected\n");
 
                 char ip[16];
-                if(wifi_manager_get_ip( ip,  sizeof(ip))  == ESP_OK)
+                if(wifi_manager_get_ip(ip, sizeof(ip)) == ESP_OK)
                 {
-                    console_print("IP Address : %s\n",  ip);
+                    console_print("IP Address : %s\n", ip);
                 }
-                /*
-                 * Check internet
-                 */
+ 
                 if(check_internet())
                 {
-                    console_print( "Internet available\n");
+                    console_print("Internet available\n");
+                    
+                    // Saves credentials, moving this profile straight to top of history (index 0)
+                    wifi_manager_save_credentials();
                     return true;
                 }
                 else
                 {
-                    console_print( "WiFi connected but internet unavailable\n");
+                    console_print("WiFi connected but internet unavailable\n");
                 }
-
             }
             else
             {
@@ -376,37 +386,55 @@ static bool wifi_setup_process(void)
             }
 
             attempt++;
-
-            console_print(   "Attempt %d/%d failed\n",  attempt,MAX_ATTEMPTS);
-
+            console_print("Attempt %d/%d failed\n", attempt, MAX_ATTEMPTS);
             vTaskDelay(pdMS_TO_TICKS(1000));
-
         }
 
-        /*
-         * Three attempts completed
-         */
         char answer[8];
-        console_read_string( "\nMaximum attempts reached. Scan again? (y/n): ",  answer,sizeof(answer));
+        console_read_string("\nMaximum attempts reached. Scan again? (y/n): ", answer, sizeof(answer));
 
         if(answer[0] == 'y' || answer[0] == 'Y')
         {
-            console_print(  "Restarting WiFi scan...\n");
+            console_print("Restarting WiFi scan...\n");
             continue;
         }
         else
         {
-            console_print( "Exiting WiFi configuration\n");
+            console_print("Exiting WiFi configuration\n");
             return false;
         }
     }
+}
+
+/* --- Forward declaration for our isolated console worker thread --- */
+static void wifi_console_task(void *pvParameters)
+{
+    ESP_LOGI("CONSOLE_WIFI", "Interactive Serial Console WiFi Worker Thread Started.");
+    
+    // This can now run its loops and block safely without stopping your web dashboard!
+    if (wifi_setup_process()) 
+    { 
+        ESP_LOGI("CONSOLE_WIFI", "Network setup via serial console successful!"); 
+    }
+    else 
+    { 
+        ESP_LOGE("CONSOLE_WIFI", "Network setup via serial console stopped."); 
+    }
+    
+    vTaskDelete(NULL); // Destroy task cleanly when exited
 }
 
 void app_main(void)
 {
     console_manager_init();
 
-    esp_err_t ret =  wifi_manager_init();
+    if (oled_init() == ESP_OK) 
+    {
+        oled_write_line(0, "SYSTEM BOOTING...");
+        oled_write_line(1, "Hotspot active.");
+    }
+
+    esp_err_t ret = wifi_manager_init();
     if (ret != ESP_OK) 
     { 
         ESP_LOGE(TAG, "WiFi initialization failed"); 
@@ -423,47 +451,64 @@ void app_main(void)
     ESP_ERROR_CHECK(webportal_init());
     ESP_LOGI(TAG, "Local Web Portal Ready");
 
-	/* // - configure the wifi using console-userInput
-    if (wifi_setup_process()) 
-    { 
-        ESP_LOGI(TAG, "Network setup successful"); 
+    // 1. Load the history array of 5 profiles out of NVS flash memory
+    wifi_manager_load_credentials();
+
+    // 2. Fire a local network scan to see what routers are currently visible
+    ESP_LOGI(TAG, "Starting background scan for known networks...");
+        
+    wifi_ap_info_t *scanned_networks = malloc(WIFI_MAX_AP * sizeof(wifi_ap_info_t));
+    if (scanned_networks == NULL) 
+    {
+        ESP_LOGE(TAG, "Failed to allocate memory for scan results!");
+        return;
     }
-    else 
-    { 
-        ESP_LOGE(TAG, "Network setup stopped"); 
-        return; 
+    
+    int scanned_count = wifi_manager_scan(scanned_networks, WIFI_MAX_AP);
+
+    // 3. Let the matching engine try your 5 saved slots one-by-one
+    bool auto_connected = wifi_manager_scan_and_connect_known(scanned_networks, scanned_count);
+
+    free(scanned_networks);
+
+    if (!auto_connected)
+    {
+        ESP_LOGW(TAG, "⚠️ No known networks found or connection failed.");
+        ESP_LOGW(TAG, "📌 Portal Active: Connect to 'ESP32-Assistant' OR use Serial Terminal input.");
+
+        /* 
+         *  FIX 1: Spawn the console configuration menu into its own isolated thread.
+         * This protects your main loop from stack overflows and keeps it running.
+         */
+        xTaskCreate(wifi_console_task, "wifi_console_task", 4096, NULL, 3, NULL);
+
+        /* 
+         * FIX 2: Dynamic Wait Trap.
+         * Pause main boot pipeline until EITHER the Web Portal OR the Serial Console 
+         * successfully connects the device to an external router interface.
+         */
+        while (!wifi_manager_is_connected())
+        {
+            vTaskDelay(pdMS_TO_TICKS(1000));
+        }
+        ESP_LOGI(TAG, "🎉 Network connection established! Resuming system boot...");
     }
-	*/
-	
 	
     /*
      *------------------------------------------------------
-     * STEP 4: Synchronize time using SNTP
-     *
-     * IMPORTANT:
-     *
-     * time_sync_init() already performs the SNTP
-     * initialization/synchronization.
-     *
-     * DO NOT call obtain_time() after this.
+     * STEP 4: Synchronize time using SNTP (Guaranteed to have internet now!)
      *------------------------------------------------------
      */
-
     ret = time_sync_init();
-
     if (ret != ESP_OK) { ESP_LOGE(TAG, "Time unavailable, WebSocket disabled"); return; }
-
     ESP_LOGI(TAG, "Time Sync - completed");
-
 
     /*
      *------------------------------------------------------
      * STEP 5: Verify actual POSIX system time
      *------------------------------------------------------
      */
-
     ret = verify_system_time();
-
     if (ret != ESP_OK) { ESP_LOGE(TAG, "System time verification failed"); return; }
 
     /*
@@ -471,43 +516,28 @@ void app_main(void)
      * STEP 6: Print memory before microphone
      *------------------------------------------------------
      */
-
     ESP_LOGI(TAG, "Memory status before microphone initialization");
-
     print_memory_status();
-
 
     /*
      *------------------------------------------------------
      * STEP 7: Initialize microphone
      *------------------------------------------------------
      */
-
     ESP_LOGI(TAG, "Initializing microphone");
-
     ret = inmp441_init();
-
     if (ret != ESP_OK) { ESP_LOGE(TAG, "INMP441 initialization failed"); return; }
-
     ESP_LOGI(TAG, "Microphone ready");
-
 
     /*
      *------------------------------------------------------
      * STEP 8: Print memory before WebSocket
      *------------------------------------------------------
      */
-
     ESP_LOGI(TAG, "Memory status before WebSocket initialization");
-
     print_memory_status();
 
-     /*------------------------------------------------------
-     * STEP 9: Initialize WebSocket
-     *------------------------------------------------------
-     */
-
-    //ret = websocket_client_init( "wss://bring-struck-photograph-kinda.trycloudflare.com");
+    /*
 
     ret = websocket_client_init("wss://donor-planet-suggesting-longitude.trycloudflare.com");
     if (ret != ESP_OK) 
@@ -515,40 +545,23 @@ void app_main(void)
         ESP_LOGE(TAG, "WebSocket initialization failed: %s", esp_err_to_name(ret)); 
         return; 
     }
-
     ESP_LOGI(TAG, "WebSocket client started");
 
-    /* Wait for connection */
+  
     while (!websocket_client_is_connected())
     {
-        ESP_LOGI( TAG, "Waiting for WebSocket connection..." );
+        ESP_LOGI(TAG, "Waiting for WebSocket connection...");
         vTaskDelay(pdMS_TO_TICKS(100));
     }
     
-    /*------------------------------------------------------
-     * STEP 8: Print memory before WebSocket
-     *-----------------------------------------------------*/
-
-    xTaskCreate( mic_task, "mic_task",MIC_TASK_STACK_SIZE, NULL, MIC_TASK_PRIORITY, NULL);
+    xTaskCreate(mic_task, "mic_task", MIC_TASK_STACK_SIZE, NULL, MIC_TASK_PRIORITY, NULL);
 
     UBaseType_t watermark = uxTaskGetStackHighWaterMark(NULL);
-    ESP_LOGI(TAG,"Mic task remaining stack: %u",(unsigned int)watermark);
-
-    //int cnt = 0 ;
-
+    ESP_LOGI(TAG, "Mic task remaining stack: %u", (unsigned int)watermark);
+    */
     while (1)
     {
-        ret =  websocket_send_text( "ESP32_TEST_PACKET :");
-        /*
-        if (ret == ESP_OK) 
-        { 
-            ESP_LOGI(TAG, "Packet sent"); 
-        } 
-        else 
-        { 
-            ESP_LOGE(TAG, "Send failed"); 
-        }
-        */
+        ret = websocket_send_text("ESP32_TEST_PACKET :");
         vTaskDelay(pdMS_TO_TICKS(3000));
     }
 }

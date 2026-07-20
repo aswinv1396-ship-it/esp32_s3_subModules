@@ -12,10 +12,6 @@ extern "C" {
 
 #define WIFI_MAX_AP 20
 
-#define WIFI_MAX_SAVED_NETWORKS    5
-#define WIFI_SSID_MAX_LEN          32
-#define WIFI_PASSWORD_MAX_LEN      64
-
 typedef struct
 {
     char ssid[33];
@@ -26,14 +22,28 @@ typedef struct
 
 typedef struct
 {
-    char ssid[WIFI_SSID_MAX_LEN + 1];
-    char password[WIFI_PASSWORD_MAX_LEN + 1];
+    char ssid[33];
+    char password[64];
     bool valid;
 } saved_wifi_t;
 
-extern saved_wifi_t saved_wifi;
+#define WIFI_HISTORY_MAX 5
 
-static saved_wifi_t saved_wifi_list[WIFI_MAX_SAVED_NETWORKS];
+// Expose the raw history array globally
+extern saved_wifi_t saved_wifi[WIFI_HISTORY_MAX];
+
+/**
+ * @brief Adds or pushes a successfully connected network to the top of the history list.
+ */
+void wifi_manager_add_to_history(const char *ssid, const char *password);
+
+/**
+ * @brief Compares scanned networks against history array and attempts to connect sequentially.
+ * 
+ * @param scanned_aps Array containing live scanned networks.
+ * @param scanned_count Number of networks found during the scan.
+ */
+bool wifi_manager_scan_and_connect_known(wifi_ap_info_t *scanned_aps, int scanned_count);
 
 /**
  * @brief Initialize the WiFi manager.
@@ -95,8 +105,10 @@ void wifi_manager_set_selected_ssid(char *ssid);
 char *wifi_manager_get_selected_ssid(void);
 
 esp_err_t wifi_manager_save_credentials(void);
-
+esp_err_t wifi_manager_load_credentials(void);
 const char *wifi_manager_get_connected_ssid(void);
+
+void wifi_manager_add_to_history(const char *ssid, const char *password);
 
 void wifi_manager_set_password(char *password);
 

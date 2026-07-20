@@ -58,15 +58,20 @@ static httpd_uri_t services_uri =
     .user_ctx = NULL
 };
 
-/*
- * System Page
- * URL: /system
- */
-static httpd_uri_t system_uri =
-{
+/*-------------------------------------------------------
+ * URI Structural Binding Registrations
+ *------------------------------------------------------*/
+httpd_uri_t system_page_uri = {
     .uri      = "/system",
     .method   = HTTP_GET,
     .handler  = system_page_handler,
+    .user_ctx = NULL
+};
+
+httpd_uri_t system_status_api_uri = {
+    .uri      = "/api/system/status",
+    .method   = HTTP_GET,
+    .handler  = system_status_api_handler,
     .user_ctx = NULL
 };
 
@@ -126,7 +131,8 @@ esp_err_t routes_register(httpd_handle_t server)
     httpd_register_uri_handler( server, &network_uri);
     httpd_register_uri_handler( server, &audio_uri);
     httpd_register_uri_handler( server, &services_uri);
-    httpd_register_uri_handler( server, &system_uri);
+    httpd_register_uri_handler( server, &system_page_uri);
+    httpd_register_uri_handler( server, &system_status_api_uri);
     httpd_register_uri_handler( server, &favicon_uri);
     httpd_register_uri_handler( server, &wifi_scan_uri);
 	httpd_register_uri_handler( server, &wifi_select_uri);
