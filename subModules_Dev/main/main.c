@@ -407,27 +407,23 @@ void app_main(void)
     console_manager_init();
 
     esp_err_t ret =  wifi_manager_init();
-
     if (ret != ESP_OK) 
     { 
         ESP_LOGE(TAG, "WiFi initialization failed"); 
         return; 
     }
-
     ESP_LOGI(TAG, "WiFi manager ready");
 
     ESP_ERROR_CHECK(ap_manager_init());
-
     ESP_LOGI(TAG, "AP Manager Ready");
 
     ESP_ERROR_CHECK(ap_manager_start());
-
     ESP_LOGI(TAG, "Local Hotspot Ready");
 
     ESP_ERROR_CHECK(webportal_init());
-
     ESP_LOGI(TAG, "Local Web Portal Ready");
 
+	/* // - configure the wifi using console-userInput
     if (wifi_setup_process()) 
     { 
         ESP_LOGI(TAG, "Network setup successful"); 
@@ -437,7 +433,9 @@ void app_main(void)
         ESP_LOGE(TAG, "Network setup stopped"); 
         return; 
     }
-
+	*/
+	
+	
     /*
      *------------------------------------------------------
      * STEP 4: Synchronize time using SNTP

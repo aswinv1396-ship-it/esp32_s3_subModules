@@ -37,20 +37,15 @@ esp_err_t webportal_init(void)
     ESP_LOGI(TAG, "Starting HTTP Server...");
 
     esp_err_t ret = httpd_start(&server, &config);
-
     if(ret != ESP_OK)
     {
         ESP_LOGE(TAG, "HTTP Server start failed");
-
         server = NULL;
-
         return ret;
     }
 
     ESP_LOGI(TAG, "HTTP Server started");
-
     routes_register(server);
-
     return ESP_OK;
 }
 
@@ -64,11 +59,8 @@ esp_err_t webportal_stop(void)
     }
 
     ESP_LOGI(TAG, "Stopping HTTP Server");
-
     httpd_stop(server);
-
     server = NULL;
-
     return ESP_OK;
 }
 

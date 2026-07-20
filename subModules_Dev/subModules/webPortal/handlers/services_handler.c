@@ -1,14 +1,14 @@
-#include "network_handler.h"
+#include "services_handler.h"
 
 #include "esp_http_server.h"
 
-#include "html/network_html.h"
+#include "html/services_html.h"
 #include "html/common_css.h"
 #include "html/common_nav.h"
 
 
 
-esp_err_t network_page_handler(httpd_req_t *req)
+esp_err_t services_page_handler(httpd_req_t *req)
 {
 
     httpd_resp_set_type(req, "text/html");
@@ -24,7 +24,7 @@ esp_err_t network_page_handler(httpd_req_t *req)
         "<head>"
         "<meta charset='UTF-8'>"
         "<meta name='viewport' content='width=device-width, initial-scale=1'>"
-        "<title>ESP32-S3 Network</title>"
+        "<title>ESP32-S3 Services</title>"
         "<style>"
     );
 
@@ -50,11 +50,11 @@ esp_err_t network_page_handler(httpd_req_t *req)
 
 
     /*
-     * Network page content
+     * Services page content
      */
     httpd_resp_sendstr_chunk(
         req,
-        NETWORK_CONTENT
+        SERVICES_CONTENT
     );
 
 

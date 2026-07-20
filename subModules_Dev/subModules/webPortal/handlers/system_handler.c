@@ -2,60 +2,89 @@
 
 #include "esp_http_server.h"
 
-static const char HOME_PAGE[] =
-"<!DOCTYPE html>"
-"<html>"
-"<head>"
-"<title>ESP32 Web Portal</title>"
-"<meta charset=\"UTF-8\">"
-"<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
-"<style>"
-"body{"
-"background:#0d1117;"
-"color:white;"
-"font-family:Arial;"
-"text-align:center;"
-"margin-top:60px;"
-"}"
+#include "html/system_html.h"
+#include "html/common_css.h"
+#include "html/common_nav.h"
 
-".card{"
-"background:#161b22;"
-"padding:30px;"
-"border-radius:12px;"
-"width:350px;"
-"margin:auto;"
-"}"
 
-"h1{color:#58a6ff;}"
 
-"</style>"
-"</head>"
-
-"<body>"
-
-"<div class=\"card\">"
-
-"<h1>ESP32-S3</h1>"
-
-"<h2>Local Web Portal</h2>"
-
-"<p>Welcome</p>"
-
-"<p>Phase-1 Running Successfully</p>"
-
-"</div>"
-
-"</body>"
-"</html>";
-
-esp_err_t system_home_handler(httpd_req_t *req)
+esp_err_t system_page_handler(httpd_req_t *req)
 {
+
     httpd_resp_set_type(req, "text/html");
 
-    httpd_resp_send(
+
+    /*
+     * HTML Header + CSS
+     */
+    httpd_resp_sendstr_chunk(
         req,
-        HOME_PAGE,
-        HTTPD_RESP_USE_STRLEN);
+        "<!DOCTYPE html>"
+        "<html>"
+        "<head>"
+        "<meta charset='UTF-8'>"
+        "<meta name='viewport' content='width=device-width, initial-scale=1'>"
+        "<title>ESP32-S3 System</title>"
+        "<style>"
+    );
+
+
+    /*
+     * Common CSS
+     */
+    httpd_resp_sendstr_chunk(
+        req,
+        COMMON_CSS
+    );
+
+
+    /*
+     * Close CSS and open body
+     */
+    httpd_resp_sendstr_chunk(
+        req,
+        "</style>"
+        "</head>"
+        "<body>"
+    );
+
+
+    /*
+     * System page content
+     */
+    httpd_resp_sendstr_chunk(
+        req,
+        SYSTEM_CONTENT
+    );
+
+
+    /*
+     * Common bottom navigation
+     */
+    httpd_resp_sendstr_chunk(
+        req,
+        COMMON_NAV
+    );
+
+
+    /*
+     * HTML Footer
+     */
+    httpd_resp_sendstr_chunk(
+        req,
+        "</body>"
+        "</html>"
+    );
+
+
+    /*
+     * End response
+     */
+    httpd_resp_sendstr_chunk(
+        req,
+        NULL
+    );
+
 
     return ESP_OK;
 }

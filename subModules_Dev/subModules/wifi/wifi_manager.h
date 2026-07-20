@@ -7,10 +7,14 @@ extern "C" {
 
 #include <stdbool.h>
 #include <stdint.h>
-
+#include <stddef.h>
 #include "esp_err.h"
 
 #define WIFI_MAX_AP 20
+
+#define WIFI_MAX_SAVED_NETWORKS    5
+#define WIFI_SSID_MAX_LEN          32
+#define WIFI_PASSWORD_MAX_LEN      64
 
 typedef struct
 {
@@ -22,17 +26,14 @@ typedef struct
 
 typedef struct
 {
-    char ssid[33];
-    char password[64];
+    char ssid[WIFI_SSID_MAX_LEN + 1];
+    char password[WIFI_PASSWORD_MAX_LEN + 1];
     bool valid;
 } saved_wifi_t;
 
-static saved_wifi_t saved_wifi =
-{
-    .ssid = "test",
-    .password = "1234567v",
-    .valid = true
-};
+extern saved_wifi_t saved_wifi;
+
+static saved_wifi_t saved_wifi_list[WIFI_MAX_SAVED_NETWORKS];
 
 /**
  * @brief Initialize the WiFi manager.
@@ -89,6 +90,15 @@ esp_err_t wifi_manager_get_ip( char *ip, size_t len);
  */
 esp_err_t wifi_manager_deinit(void);
 
+void wifi_manager_set_selected_ssid(char *ssid);
+
+char *wifi_manager_get_selected_ssid(void);
+
+esp_err_t wifi_manager_save_credentials(void);
+
+const char *wifi_manager_get_connected_ssid(void);
+
+void wifi_manager_set_password(char *password);
 
 #ifdef __cplusplus
 }

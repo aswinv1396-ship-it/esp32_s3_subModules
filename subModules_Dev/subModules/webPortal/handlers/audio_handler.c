@@ -1,14 +1,14 @@
-#include "network_handler.h"
+#include "audio_handler.h"
 
 #include "esp_http_server.h"
 
-#include "html/network_html.h"
+#include "html/audio_html.h"
 #include "html/common_css.h"
 #include "html/common_nav.h"
 
 
 
-esp_err_t network_page_handler(httpd_req_t *req)
+esp_err_t audio_page_handler(httpd_req_t *req)
 {
 
     httpd_resp_set_type(req, "text/html");
@@ -24,7 +24,7 @@ esp_err_t network_page_handler(httpd_req_t *req)
         "<head>"
         "<meta charset='UTF-8'>"
         "<meta name='viewport' content='width=device-width, initial-scale=1'>"
-        "<title>ESP32-S3 Network</title>"
+        "<title>ESP32-S3 Audio</title>"
         "<style>"
     );
 
@@ -50,16 +50,16 @@ esp_err_t network_page_handler(httpd_req_t *req)
 
 
     /*
-     * Network page content
+     * Audio page content
      */
     httpd_resp_sendstr_chunk(
         req,
-        NETWORK_CONTENT
+        AUDIO_CONTENT
     );
 
 
     /*
-     * Common bottom navigation
+     * Common navigation bar
      */
     httpd_resp_sendstr_chunk(
         req,
@@ -78,7 +78,7 @@ esp_err_t network_page_handler(httpd_req_t *req)
 
 
     /*
-     * Finish chunked response
+     * End chunk response
      */
     httpd_resp_sendstr_chunk(
         req,

@@ -7,6 +7,7 @@
 #include "esp_log.h"
 #include "esp_netif.h"
 #include "nvs_flash.h"
+#include "nvs.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
@@ -19,6 +20,19 @@ static const char *TAG = "wifi_manager";
 static EventGroupHandle_t wifi_event_group;
 
 static esp_netif_t *wifi_sta_netif = NULL;
+
+static saved_wifi_t saved_wifi_list[WIFI_MAX_SAVED_NETWORKS] =
+{
+    { .valid = false },
+    { .valid = false },
+    { .valid = false },
+    { .valid = false },
+    { .valid = false }
+};
+
+
+static char selected_ssid[33]={0};
+static char current_password[64]={0};
 
 static bool wifi_initialized = false;
 static bool wifi_connected = false;
@@ -39,10 +53,11 @@ static void wifi_event_handler( void *arg,  esp_event_base_t event_base,int32_t 
             break;
 
 		case WIFI_EVENT_STA_DISCONNECTED:
-    		ESP_LOGW(TAG,"WiFi disconnected, retrying...");
+			wifi_event_sta_disconnected_t *e = event_data;
+    		ESP_LOGW(TAG,"WiFi disconnected, reason=%d",  e->reason);
 		    wifi_connected = false;
 		    xEventGroupClearBits( wifi_event_group,  WIFI_CONNECTED_BIT);
-		    esp_wifi_connect();
+		    //esp_wifi_connect();
 		    break;
 
         default:
@@ -50,7 +65,6 @@ static void wifi_event_handler( void *arg,  esp_event_base_t event_base,int32_t 
         }
 
     }
-
 
     if(event_base == IP_EVENT &&  event_id == IP_EVENT_STA_GOT_IP)
     {
@@ -209,48 +223,195 @@ int wifi_manager_scan(wifi_ap_info_t *aps,int max_count)
     return number;
 }
 
-
-
 /*
  * Connect to WiFi
  */
-esp_err_t wifi_manager_connect( const char *ssid,const char *password)
+ 
+esp_err_t wifi_manager_connect(const char *ssid, const char *password)
 {
-
-    if(!wifi_initialized)
-        return ESP_ERR_WIFI_NOT_INIT;
-
-    if(ssid == NULL)
-        return ESP_ERR_INVALID_ARG;
-
-    wifi_config_t wifi_config = {0};
-
-    strncpy((char *)wifi_config.sta.ssid, ssid, sizeof(wifi_config.sta.ssid));
-
-
-    if(password)
-    {
-        strncpy((char *)wifi_config.sta.password,  password, sizeof(wifi_config.sta.password));
-    }
-
     esp_err_t ret;
 
-    ret = esp_wifi_set_config( WIFI_IF_STA, &wifi_config);
+    ESP_LOGI(TAG, "=================================================");
+    ESP_LOGI(TAG, "wifi_manager_connect()");
+    ESP_LOGI(TAG, "=================================================");
 
-    if(ret != ESP_OK)
+    /*-------------------------------------------------------
+     * Check WiFi manager
+     *------------------------------------------------------*/
+    if (!wifi_initialized)
+    {
+        ESP_LOGE(TAG, "WiFi manager not initialized");
+        return ESP_ERR_WIFI_NOT_INIT;
+    }
+
+    /*-------------------------------------------------------
+     * Check input pointers
+     *------------------------------------------------------*/
+    if (ssid == NULL || password == NULL)
+    {
+        ESP_LOGE(TAG, "SSID or Password is NULL");
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    /*-------------------------------------------------------
+     * Calculate input lengths
+     *------------------------------------------------------*/
+    size_t ssid_len = strlen(ssid);
+    size_t password_len = strlen(password);
+
+    ESP_LOGI(TAG, "Input SSID     : '%s'", ssid);
+    ESP_LOGI(TAG, "Input PASSWORD : '%s'", password);
+    ESP_LOGI(TAG, "SSID Length    : %u", (unsigned)ssid_len);
+    ESP_LOGI(TAG, "PASS Length    : %u", (unsigned)password_len);
+
+    if (ssid_len == 0 || ssid_len > 32)
+    {
+        ESP_LOGE(TAG, "Invalid SSID length: %u", (unsigned)ssid_len);
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (password_len > 63)
+    {
+        ESP_LOGE(TAG, "Invalid password length: %u", (unsigned)password_len);
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    ESP_LOGI(TAG, "SSID Bytes:");
+    for (size_t i = 0; i < ssid_len; i++)
+    {
+        ESP_LOGI(TAG, "  [%02u] = 0x%02X ('%c')", (unsigned)i, (unsigned char)ssid[i], ssid[i]);
+    }
+
+    ESP_LOGI(TAG, "Password Bytes:");
+    for (size_t i = 0; i < password_len; i++)
+    {
+        ESP_LOGI(TAG, "  [%02u] = 0x%02X", (unsigned)i, (unsigned char)password[i]);
+    }
+
+    /*-------------------------------------------------------
+     * FIX: Allocate temporary stack buffers.
+     * This shields the data from being zeroed out if 'ssid' 
+     * or 'password' overlap with the global memory spaces.
+     *------------------------------------------------------*/
+    char tmp_ssid[33] = {0};
+    char tmp_pass[64] = {0};
+    
+    memcpy(tmp_ssid, ssid, ssid_len);
+    memcpy(tmp_pass, password, password_len);
+
+    /*-------------------------------------------------------
+     * Safely update internal global variables
+     *------------------------------------------------------*/
+    memset(selected_ssid, 0, sizeof(selected_ssid));
+    memcpy(selected_ssid, tmp_ssid, ssid_len);
+
+    memset(current_password, 0, sizeof(current_password));
+    memcpy(current_password, tmp_pass, password_len);
+
+    ESP_LOGI(TAG, "Credentials stored internally");
+    ESP_LOGI(TAG, "selected_ssid='%s'", selected_ssid);
+    ESP_LOGI(TAG, "current_password='%s'", current_password);
+
+    /*-------------------------------------------------------
+     * Prepare STA Configuration using local buffers
+     *------------------------------------------------------*/
+    wifi_config_t wifi_config;
+    memset(&wifi_config, 0, sizeof(wifi_config));
+
+    memcpy(wifi_config.sta.ssid, tmp_ssid, ssid_len);
+    memcpy(wifi_config.sta.password, tmp_pass, password_len);
+
+    wifi_config.sta.scan_method = WIFI_ALL_CHANNEL_SCAN;
+    wifi_config.sta.sort_method = WIFI_CONNECT_AP_BY_SIGNAL;
+    wifi_config.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
+    wifi_config.sta.pmf_cfg.capable = true;
+    wifi_config.sta.pmf_cfg.required = false;
+
+    ESP_LOGI(TAG, "Prepared STA Configuration");
+    ESP_LOGI(TAG, "SSID='%s'", (char *)wifi_config.sta.ssid);
+    ESP_LOGI(TAG, "PASS='%s'", (char *)wifi_config.sta.password);
+    ESP_LOGI(TAG, "SSID Length=%u", (unsigned)strlen((char *)wifi_config.sta.ssid));
+    ESP_LOGI(TAG, "PASS Length=%u", (unsigned)strlen((char *)wifi_config.sta.password));
+
+    ESP_LOGI(TAG, "SSID raw bytes:");
+    for (int i = 0; i < 32; i++)
+    {
+        ESP_LOGI(TAG, "SSID[%02d] = 0x%02X", i, wifi_config.sta.ssid[i]);
+    }
+
+    /*-------------------------------------------------------
+     * Apply configuration
+     *------------------------------------------------------*/
+    ret = esp_wifi_disconnect();
+    if (ret != ESP_OK && ret != ESP_ERR_WIFI_NOT_CONNECT)
+    {
+        ESP_LOGW(TAG, "esp_wifi_disconnect() returned %s", esp_err_to_name(ret));
+    }
+
+    ret = esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
+    ESP_LOGI(TAG, "esp_wifi_set_config() = %s (%d)", esp_err_to_name(ret), ret);
+    if (ret != ESP_OK)
+    {
         return ret;
+    }
 
+    /*-------------------------------------------------------
+     * Verify Configuration
+     *------------------------------------------------------*/
+    wifi_config_t verify;
+    memset(&verify, 0, sizeof(verify));
+
+    ret = esp_wifi_get_config(WIFI_IF_STA, &verify);
+    ESP_LOGI(TAG, "esp_wifi_get_config() = %s (%d)", esp_err_to_name(ret), ret);
+    if (ret != ESP_OK)
+    {
+        return ret;
+    }
+
+    ESP_LOGI(TAG, "Driver Configuration");
+    ESP_LOGI(TAG, "SSID='%s'", (char *)verify.sta.ssid);
+    ESP_LOGI(TAG, "PASS='%s'", (char *)verify.sta.password);
+    ESP_LOGI(TAG, "SSID Length=%u", (unsigned)strlen((char *)verify.sta.ssid));
+    ESP_LOGI(TAG, "PASS Length=%u", (unsigned)strlen((char *)verify.sta.password));
+
+    if (strlen((char *)verify.sta.ssid) == 0)
+    {
+        ESP_LOGE(TAG, "ERROR: Driver STA SSID is empty after set_config");
+        return ESP_FAIL;
+    }
+
+    /*-------------------------------------------------------
+     * Reset connection state
+     *------------------------------------------------------*/
+    wifi_connected = false;
+    xEventGroupClearBits(wifi_event_group, WIFI_CONNECTED_BIT);
+
+    /*-------------------------------------------------------
+     * Connect
+     *------------------------------------------------------*/
+    ESP_LOGI(TAG, "Calling esp_wifi_connect()...");
     ret = esp_wifi_connect();
-
-    if(ret != ESP_OK)
+    ESP_LOGI(TAG, "esp_wifi_connect() returned %s (%d)", esp_err_to_name(ret), ret);
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "esp_wifi_connect() failed immediately");
         return ret;
+    }
 
-    EventBits_t bits;
+    ESP_LOGI(TAG, "Waiting for IP Event...");
+    EventBits_t bits = xEventGroupWaitBits(wifi_event_group,
+                                           WIFI_CONNECTED_BIT,
+                                           pdFALSE,
+                                           pdTRUE,
+                                           pdMS_TO_TICKS(20000));
 
-    bits = xEventGroupWaitBits( wifi_event_group, WIFI_CONNECTED_BIT, pdFALSE, pdTRUE, pdMS_TO_TICKS(15000));
-
-    if(bits & WIFI_CONNECTED_BIT)
+    if (bits & WIFI_CONNECTED_BIT)
+    {
+        ESP_LOGI(TAG, "WiFi Connected Successfully");
         return ESP_OK;
+    }
+
+    ESP_LOGE(TAG, "Timed out waiting for IP address");
     return ESP_FAIL;
 }
 
@@ -262,6 +423,62 @@ bool wifi_manager_is_connected(void)
     return wifi_connected;
 }
 
+void wifi_manager_set_selected_ssid(char *ssid)
+{
+    if(ssid == NULL)
+        return;
+
+    memset( selected_ssid, 0,sizeof(selected_ssid) );
+    strncpy( selected_ssid,  ssid, sizeof(selected_ssid)-1 );
+
+    ESP_LOGI( "WIFI_MANAGER",  "Selected SSID=%s",  selected_ssid );
+
+}
+
+char *wifi_manager_get_selected_ssid(void)
+{
+    return selected_ssid;
+}
+
+esp_err_t wifi_manager_save_credentials(void)
+{
+
+    nvs_handle_t nvs;
+
+    esp_err_t ret = nvs_open("wifi",  NVS_READWRITE,  &nvs  );
+
+    if(ret != ESP_OK)
+        return ret;
+
+    ret = nvs_set_str( nvs, "ssid", selected_ssid);
+    if(ret!=ESP_OK)
+	{
+   		nvs_close(nvs);
+    	return ret;
+	}
+
+    ret = nvs_set_str( nvs, "password", current_password );
+    if(ret!=ESP_OK)
+	{
+    	nvs_close(nvs);
+    	return ret;
+	}
+    
+    ret =  nvs_commit(nvs);
+    nvs_close(nvs);
+    if(ret == ESP_OK)
+    {
+        strcpy( saved_wifi.ssid, selected_ssid);
+
+        strcpy( saved_wifi.password,  current_password );
+
+        saved_wifi.valid=true;
+
+        ESP_LOGI( "WIFI_MANAGER", "Credentials stored"  );
+    }
+
+    return ret;
+}
 /*
  * Get local IP address
  */
@@ -281,6 +498,21 @@ esp_err_t wifi_manager_get_ip(char *ip,size_t len)
     snprintf(ip, len, IPSTR, IP2STR(&ip_info.ip));
 
     return ESP_OK;
+}
+
+const char *wifi_manager_get_connected_ssid(void)
+{
+    return selected_ssid;
+}
+
+void wifi_manager_set_password(char *password)
+{
+    if(password == NULL)
+        return;
+
+    memset(current_password,0,sizeof(current_password));
+    strncpy(current_password, password, sizeof(current_password)-1);
+    ESP_LOGI( "WIFI_MANAGER", "Password updated" );
 }
 
 /*
